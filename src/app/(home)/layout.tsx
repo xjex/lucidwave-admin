@@ -59,6 +59,8 @@ export default function HomeLayout({ children }: HomeLayoutProps) {
     if (path === "/receipts") return "Send Receipt";
     if (path === "/contacts") return "Website Contacts";
     if (path === "/contacts/list") return "Contact List";
+    if (path === "/mailing-history") return "Mailing History";
+    if (path === "/users") return "Users";
     return "Dashboard";
   };
 

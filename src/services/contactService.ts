@@ -33,54 +33,49 @@ export interface ContactsResponse {
   };
 }
 
-class ContactService {
-  private apiUrl: string;
+const API_URL = `${API_BASE_URL}/api/contactus/`;
 
-  constructor() {
-    this.apiUrl = `${API_BASE_URL}/api/contactus/`;
+export async function getContacts(
+  page: number = 1,
+  limit: number = 10
+): Promise<ContactsResponse> {
+  try {
+    const url = `${API_URL}?page=${page}&limit=${limit}`;
+    console.log("Fetching contacts from:", url);
+
+    const response: AxiosResponse<ContactsResponse> = await axios.get(url, {
+      headers: {
+        ...(axios.defaults.headers.common["Authorization"] && {
+          Authorization: axios.defaults.headers.common["Authorization"],
+        }),
+      },
+    });
+
+    console.log("Contacts response:", response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error("Error fetching contacts:", error);
+    console.error("Error response:", error.response);
+    throw error;
   }
+}
 
-  async getContacts(page: number = 1, limit: number = 10): Promise<ContactsResponse> {
-    try {
-      const url = `${this.apiUrl}?page=${page}&limit=${limit}`;
-      console.log("Fetching contacts from:", url);
-
-      const response: AxiosResponse<ContactsResponse> = await axios.get(url, {
+export async function getContactById(id: string): Promise<Contact> {
+  try {
+    const response: AxiosResponse<{ data: Contact }> = await axios.get(
+      `${API_URL}/${id}`,
+      {
         headers: {
           ...(axios.defaults.headers.common["Authorization"] && {
             Authorization: axios.defaults.headers.common["Authorization"],
           }),
         },
-      });
+      }
+    );
 
-      console.log("Contacts response:", response.data);
-      return response.data;
-    } catch (error: any) {
-      console.error("Error fetching contacts:", error);
-      console.error("Error response:", error.response);
-      throw error;
-    }
-  }
-
-  async getContactById(id: string): Promise<Contact> {
-    try {
-      const response: AxiosResponse<{ data: Contact }> = await axios.get(
-        `${this.apiUrl}/${id}`,
-        {
-          headers: {
-            ...(axios.defaults.headers.common["Authorization"] && {
-              Authorization: axios.defaults.headers.common["Authorization"],
-            }),
-          },
-        }
-      );
-
-      return response.data.data;
-    } catch (error) {
-      console.error("Error fetching contact:", error);
-      throw error;
-    }
+    return response.data.data;
+  } catch (error) {
+    console.error("Error fetching contact:", error);
+    throw error;
   }
 }
-
-export const contactService = new ContactService();

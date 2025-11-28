@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { invoiceService } from "@/services/invoiceService";
+import { sendInvoices } from "@/services/invoiceService";
 
 interface InvoiceState {
   files: File[];
@@ -64,7 +64,7 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     set({ isLoading: true, message: "" });
 
     try {
-      const result = await invoiceService.sendInvoices(files, email);
+      const result = await sendInvoices(files, email);
 
       if (result.success) {
         set({

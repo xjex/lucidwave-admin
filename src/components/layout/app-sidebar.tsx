@@ -8,11 +8,13 @@ import {
   Command,
   Frame,
   GalleryVerticalEnd,
+  History,
   Map,
   PieChart,
   Settings2,
   SquareTerminal,
   Users,
+  UserCog,
 } from "lucide-react";
 
 import { NavMain } from "@/components/layout/nav-main";
@@ -37,7 +39,7 @@ const data = {
   },
   teams: [
     {
-      name: "Invoice Team",
+      name: "Lucid Wave Studio Team",
       logo: GalleryVerticalEnd,
       plan: "Enterprise",
     },
@@ -86,6 +88,28 @@ const data = {
         },
       ],
       isActive: false,
+    },
+    {
+      title: "Mailing History",
+      url: "/mailing-history",
+      icon: History,
+      isActive: false,
+    },
+    {
+      title: "Users Management",
+      url: "#",
+      icon: UserCog,
+      isActive: false,
+      items: [
+        {
+          title: "User Invitation",
+          url: "/invitations",
+        },
+        {
+          title: "Users",
+          url: "/users",
+        },
+      ],
     },
     {
       title: "Settings",

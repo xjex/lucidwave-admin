@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { receiptService } from "@/services/receiptService";
+import { sendReceipts } from "@/services/receiptService";
 
 interface ReceiptState {
   files: File[];
@@ -112,7 +112,7 @@ export const useReceiptStore = create<ReceiptState>((set, get) => ({
     set({ isLoading: true, message: "" });
 
     try {
-      const result = await receiptService.sendReceipts(
+      const result = await sendReceipts(
         files,
         receiverName,
         receivedAmount,

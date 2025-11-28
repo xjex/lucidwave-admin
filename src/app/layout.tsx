@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Invoice Email Sender",
-  description: "Send invoices via email to your clients",
+  title: "Lucidwave Studios Admin",
+  description: "Admin panel for Lucidwave Studios",
 };
 
 export default function RootLayout({

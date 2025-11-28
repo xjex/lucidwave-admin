@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  contactsService,
+  getContacts,
+  createContact,
+  updateContact,
+  deleteContact,
   ContactListItem,
   ContactsListResponse,
 } from "@/services/contactsService";
@@ -97,7 +100,7 @@ export default function ContactListPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await contactsService.getContacts(page, 10);
+      const response = await getContacts(page, 10);
       setContacts(response.data);
       setMeta(response.meta);
     } catch (err: any) {
@@ -129,7 +132,7 @@ export default function ContactListPage() {
 
     try {
       // Make API call
-      const createdContact = await contactsService.createContact(contactData);
+      const createdContact = await createContact(contactData);
 
       // Replace optimistic contact with real one
       setContacts((prev) =>
@@ -181,13 +184,18 @@ export default function ContactListPage() {
     setEditModalOpen(true);
   };
 
-  const handleSendInvoiceSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await sendInvoices();
+  const handleSendInvoiceSubmit = async () => {
+    try {
+      await sendInvoices();
+      // The success/error handling is done in the modal with toast notifications
+    } catch (error) {
+      console.error("Invoice sending failed:", error);
+      // Error is handled by the toast in the modal
+    }
   };
 
-  const handleSendReceiptSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendReceiptSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault?.();
     await sendReceipts();
   };
 
@@ -197,10 +205,7 @@ export default function ContactListPage() {
 
     try {
       // Make API call to update contact
-      const response = await contactsService.updateContact(
-        actionContact.id,
-        editContact
-      );
+      const response = await updateContact(actionContact.id, editContact);
 
       // Update contact in local state
       setContacts((prev) =>
@@ -237,7 +242,7 @@ export default function ContactListPage() {
 
     try {
       // Make API call
-      await contactsService.deleteContact(contactToRemove.id);
+      await deleteContact(contactToRemove.id);
     } catch (err: any) {
       // Add contact back on error
       setContacts((prev) =>
@@ -283,33 +288,33 @@ export default function ContactListPage() {
         onSendReceipt={handleSendReceipt}
         onEditContact={handleEditContact}
         onDeleteContact={handleDeleteContact}
-      />
+          />
 
-      {meta && meta.pages > 1 && (
-        <div className="flex items-center justify-between pt-4">
-          <div className="text-sm text-muted-foreground">
-            Page {meta.page} of {meta.pages}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchContacts(meta.page - 1)}
-              disabled={meta.page <= 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchContacts(meta.page + 1)}
-              disabled={meta.page >= meta.pages}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+          {meta && meta.pages > 1 && (
+            <div className="flex items-center justify-between pt-4">
+              <div className="text-sm text-muted-foreground">
+                Page {meta.page} of {meta.pages}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchContacts(meta.page - 1)}
+                  disabled={meta.page <= 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchContacts(meta.page + 1)}
+                  disabled={meta.page >= meta.pages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
 
       <CreateContactModal
         isOpen={createModalOpen}
@@ -347,6 +352,7 @@ export default function ContactListPage() {
         files={invoiceFiles}
         email={invoiceEmail}
         isLoading={invoiceLoading}
+        message={invoiceMessage}
         onFileChange={(e) => {
           const selectedFiles = Array.from(e.target.files || []);
           addInvoiceFiles(selectedFiles);
@@ -354,6 +360,7 @@ export default function ContactListPage() {
         }}
         onEmailChange={setInvoiceEmail}
         onRemoveFile={removeInvoiceFile}
+        onClearMessage={clearInvoiceMessage}
       />
 
       <SendReceiptModal
@@ -368,6 +375,7 @@ export default function ContactListPage() {
         currency={currency}
         receivedVia={receivedVia}
         isLoading={receiptLoading}
+        message={receiptMessage}
         onFileChange={(e) => {
           const selectedFiles = Array.from(e.target.files || []);
           addReceiptFiles(selectedFiles);
@@ -379,6 +387,7 @@ export default function ContactListPage() {
         onCurrencyChange={setCurrency}
         onReceivedViaChange={setReceivedVia}
         onRemoveFile={removeReceiptFile}
+        onClearMessage={clearReceiptMessage}
       />
     </div>
   );

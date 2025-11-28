@@ -25,7 +25,7 @@ import {
   TableAction,
 } from "@/components/ui/data-table";
 import {
-  contactService,
+  getContacts,
   Contact,
   ContactsResponse,
 } from "@/services/contactService";
@@ -56,7 +56,7 @@ export default function ContactsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response = await contactService.getContacts(page, 10);
+      const response = await getContacts(page, 10);
       setContacts(response.data);
       setMeta(response.meta);
     } catch (err: any) {
