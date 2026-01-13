@@ -24,7 +24,7 @@ export async function getCareers(
   if (department) params.append("department", department);
   if (type) params.append("type", type);
 
-  const response = await axios.get<CareersResponse>(`${API_URL}/admin?${params}`);
+  const response = await axios.get<CareersResponse>(`${API_URL}admin?${params}`);
   return response.data;
 }
 
