@@ -1,6 +1,8 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import {
   Breadcrumb,
@@ -26,6 +28,57 @@ export default function SidebarLayout({
   children,
   pageTitle,
 }: SidebarLayoutProps) {
+  const pathname = usePathname();
+
+  const segmentLabels: Record<string, string> = {
+    dashboard: "Dashboard",
+    invoice: "Send Invoice",
+    receipts: "Send Receipt",
+    contacts: "Contacts",
+    "web-reach": "Website Contacts",
+    list: "Contact List",
+    "mailing-history": "Mailing History",
+    careers: "Careers",
+    jobs: "Job Listings",
+    applications: "Applications",
+    users: "Users",
+    invitations: "User Invitations",
+  };
+
+  const segments = pathname
+    .split("/")
+    .filter(Boolean)
+    .filter((segment) => segment !== "(home)");
+
+  const breadcrumbs = segments.map((segment, index) => {
+    const href = `/${segments.slice(0, index + 1).join("/")}`;
+    // Check if this is a dynamic ID segment (MongoDB ObjectId pattern or any ID after "applications")
+    const isIdSegment = 
+      /^[a-f0-9]{24}$/i.test(segment) || 
+      (index > 0 && segments[index - 1] === "applications" && !segmentLabels[segment]);
+    
+    const label = isIdSegment
+      ? "View"
+      : segmentLabels[segment] ||
+        segment.charAt(0).toUpperCase() + segment.slice(1);
+
+    return {
+      href,
+      label,
+      isLast: index === segments.length - 1,
+    };
+  });
+
+  if (breadcrumbs.length === 0) {
+    breadcrumbs.push({
+      href: "/dashboard",
+      label: "Dashboard",
+      isLast: true,
+    });
+  } else {
+    breadcrumbs[breadcrumbs.length - 1].label = pageTitle;
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -36,29 +89,22 @@ export default function SidebarLayout({
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
-                {pageTitle === "Send Invoice" && (
-                  <>
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink asChild>
-                        <Link href="/dashboard">Invoices</Link>
-                      </BreadcrumbLink>
+                {breadcrumbs.map((crumb, index) => (
+                  <Fragment key={crumb.href || index}>
+                    <BreadcrumbItem>
+                      {crumb.isLast ? (
+                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink asChild>
+                          <Link href={crumb.href}>{crumb.label}</Link>
+                        </BreadcrumbLink>
+                      )}
                     </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                  </>
-                )}
-                {pageTitle === "Send Receipt" && (
-                  <>
-                    <BreadcrumbItem className="hidden md:block">
-                      <BreadcrumbLink asChild>
-                        <Link href="/dashboard">Receipts</Link>
-                      </BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator className="hidden md:block" />
-                  </>
-                )}
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{pageTitle}</BreadcrumbPage>
-                </BreadcrumbItem>
+                    {!crumb.isLast && (
+                      <BreadcrumbSeparator className="hidden md:block" />
+                    )}
+                  </Fragment>
+                ))}
               </BreadcrumbList>
             </Breadcrumb>
           </div>

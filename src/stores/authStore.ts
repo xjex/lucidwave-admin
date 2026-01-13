@@ -4,6 +4,19 @@ import axios from "axios";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
+const formatUserData = (userData: any) => ({
+  name:
+    userData?.name ||
+    userData?.username ||
+    userData?.email?.split("@")[0] ||
+    "User",
+  email: userData?.email || "user@example.com",
+  avatar:
+    userData?.avatar ||
+    `/avatars/${userData?.email?.charAt(0)?.toLowerCase() || "u"}.jpg`,
+  role: userData?.role || "User",
+});
+
 interface AuthState {
   isAuthenticated: boolean;
   user: {
@@ -197,80 +210,42 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   checkAuth: async () => {
     const token = localStorage.getItem("authToken");
-    const refreshToken = localStorage.getItem("refreshToken");
-    const storedUser = localStorage.getItem("userData");
+    if (!token) {
+      delete axios.defaults.headers.common["Authorization"];
+      set({
+        isAuthenticated: false,
+        user: null,
+        token: null,
+        refreshToken: null,
+        error: null,
+      });
+      return;
+    }
 
-    if (token) {
-      // Set axios default header
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
+    const loadUser = async () => {
+      const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
+      const userData = response.data.user || response.data;
+      const formattedUser = formatUserData(userData);
+
+      set({
+        isAuthenticated: true,
+        user: formattedUser,
+        token: localStorage.getItem("authToken"),
+        refreshToken: localStorage.getItem("refreshToken"),
+        error: null,
+      });
+    };
+
+    try {
+      await loadUser();
+    } catch (error) {
       try {
-        // Try to get user data from stored data or API call
-        let userData = null;
-
-        if (storedUser) {
-          userData = JSON.parse(storedUser);
-        } else {
-          // If no stored user data, try to get from API
-          try {
-            const response = await axios.get(`${API_BASE_URL}/api/auth/me`);
-            userData = response.data.user || response.data;
-          } catch (apiError) {
-            console.warn("Could not fetch user data from API:", apiError);
-            // Try to refresh token if API call fails
-            try {
-              const store = useAuthStore.getState();
-              await store.refresh();
-              // Retry getting user data after refresh
-              const retryResponse = await axios.get(
-                `${API_BASE_URL}/api/auth/me`
-              );
-              userData = retryResponse.data.user || retryResponse.data;
-            } catch (refreshError) {
-              console.warn("Could not refresh token:", refreshError);
-              // Fallback to basic user if both API call and refresh fail
-              userData = {
-                name: "User",
-                email: "user@example.com",
-                role: "User",
-              };
-            }
-          }
-        }
-
-        // Format user data
-        const formattedUser = {
-          name:
-            userData.name ||
-            userData.username ||
-            userData.email?.split("@")[0] ||
-            "User",
-          email: userData.email || "user@example.com",
-          avatar:
-            userData.avatar ||
-            `/avatars/${userData.email?.charAt(0)?.toLowerCase() || "u"}.jpg`,
-          role: userData.role || "User",
-        };
-
-        set({
-          isAuthenticated: true,
-          user: formattedUser,
-          token: localStorage.getItem("authToken"), // Get updated token
-          refreshToken: localStorage.getItem("refreshToken"), // Get updated refresh token
-        });
-      } catch (error) {
-        console.error("Error in checkAuth:", error);
-        // Clear invalid tokens
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("userData");
-        delete axios.defaults.headers.common["Authorization"];
-        set({
-          isAuthenticated: false,
-          user: null,
-          token: null,
-          refreshToken: null,
-        });
+        await get().refresh();
+        await loadUser();
+      } catch (refreshError) {
+        get().logout();
       }
     }
   },

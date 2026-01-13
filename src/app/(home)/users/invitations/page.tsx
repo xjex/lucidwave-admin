@@ -53,6 +53,7 @@ export default function InvitationsPage() {
 
   // Modal states
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   // Form states
   const [createForm, setCreateForm] = useState<CreateInvitationRequest>({
@@ -82,6 +83,7 @@ export default function InvitationsPage() {
   const handleCreateInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      setIsSending(true);
       const response = await sendInvitation(createForm);
       toast.success(
         response.message ||
@@ -96,6 +98,8 @@ export default function InvitationsPage() {
           err.response?.data?.error ||
           "Failed to send invitation"
       );
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -271,10 +275,13 @@ export default function InvitationsPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setCreateModalOpen(false)}
+                disabled={isSending}
               >
                 Cancel
               </Button>
-              <Button type="submit">Send Invitation</Button>
+              <Button type="submit" disabled={isSending}>
+                {isSending ? "Sending..." : "Send Invitation"}
+              </Button>
             </div>
           </form>
         </DialogContent>

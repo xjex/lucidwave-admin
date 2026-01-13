@@ -5,6 +5,7 @@ import {
   AudioWaveform,
   BookOpen,
   Bot,
+  Briefcase,
   Command,
   Frame,
   GalleryVerticalEnd,
@@ -29,6 +30,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/stores/authStore";
+import { usePathname } from "next/navigation";
 
 // This is sample data.
 const data = {
@@ -49,7 +51,6 @@ const data = {
       title: "Dashboard",
       url: "/dashboard",
       icon: SquareTerminal,
-      isActive: true,
     },
     {
       title: "Invoices",
@@ -75,12 +76,12 @@ const data = {
     },
     {
       title: "Contacts",
-      url: "/contacts",
+      url: "/contacts/web-reach",
       icon: Users,
       items: [
         {
-          title: "Website Contacts",
-          url: "/contacts",
+          title: "Website Reach Out",
+          url: "/contacts/web-reach",
         },
         {
           title: "Contact List",
@@ -96,18 +97,34 @@ const data = {
       isActive: false,
     },
     {
+      title: "Careers",
+      url: "/careers",
+      icon: Briefcase,
+      items: [
+        {
+          title: "Job Listings",
+          url: "/careers/jobs",
+        },
+        {
+          title: "Applications",
+          url: "/careers/applications",
+        },
+      ],
+      isActive: false,
+    },
+    {
       title: "Users Management",
-      url: "#",
+      url: "/users",
       icon: UserCog,
       isActive: false,
       items: [
         {
-          title: "User Invitation",
-          url: "/invitations",
-        },
-        {
           title: "Users",
           url: "/users",
+        },
+        {
+          title: "User Invitation",
+          url: "/users/invitations",
         },
       ],
     },
@@ -156,6 +173,40 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuthStore();
+  const pathname = usePathname();
+
+  const matchPath = React.useCallback(
+    (target?: string) => {
+      if (!target || target === "#") return false;
+      return pathname === target || pathname.startsWith(`${target}/`);
+    },
+    [pathname]
+  );
+
+  const navItems = React.useMemo(() => {
+    return data.navMain.map((item) => {
+      if (item.items && item.items.length > 0) {
+        const subItems = item.items.map((subItem) => ({
+          ...subItem,
+          isActive: matchPath(subItem.url),
+        }));
+
+        const isActive =
+          matchPath(item.url) || subItems.some((sub) => sub.isActive);
+
+        return {
+          ...item,
+          isActive,
+          items: subItems,
+        };
+      }
+
+      return {
+        ...item,
+        isActive: matchPath(item.url),
+      };
+    });
+  }, [matchPath]);
 
   // Ensure user data has required avatar field
   const currentUser = user
@@ -177,7 +228,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navItems} />
         <NavProjects projects={data.projects} />
       </SidebarContent>
       <SidebarFooter>

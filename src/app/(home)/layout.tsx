@@ -57,10 +57,15 @@ export default function HomeLayout({ children }: HomeLayoutProps) {
     if (path === "/dashboard") return "Dashboard";
     if (path === "/invoice") return "Send Invoice";
     if (path === "/receipts") return "Send Receipt";
-    if (path === "/contacts") return "Website Contacts";
+    if (path === "/contacts/web-reach") return "Website Contacts";
     if (path === "/contacts/list") return "Contact List";
     if (path === "/mailing-history") return "Mailing History";
+    if (path === "/careers") return "Careers";
+    if (path === "/careers/jobs") return "Job Listings";
+    if (path === "/careers/applications") return "Applications";
+    if (path.startsWith("/careers/applications/")) return "Job Applications";
     if (path === "/users") return "Users";
+    if (path === "/users/invitations") return "User Invitations";
     return "Dashboard";
   };
 
