@@ -16,6 +16,7 @@ import {
   SquareTerminal,
   Users,
   UserCog,
+  Folder,
 } from "lucide-react";
 
 import { NavMain } from "@/components/layout/nav-main";
@@ -110,6 +111,12 @@ const data = {
           url: "/careers/applications",
         },
       ],
+      isActive: false,
+    },
+    {
+      title: "Portfolio",
+      url: "/portfolio",
+      icon: Folder,
       isActive: false,
     },
     {
