@@ -43,9 +43,6 @@ const CATEGORIES = [
   "Other",
 ];
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
-
 export default function PortfolioFormDrawer({
   open,
   onOpenChange,
@@ -75,12 +72,8 @@ export default function PortfolioFormDrawer({
       setProjectStatus(portfolio.attributes.project_status);
       setLink(portfolio.attributes.link || "");
       
-      // Handle imageURL - check if it's just an ID or a full path
-      let imageUrl = portfolio.attributes.imageURL;
-      if (!imageUrl.startsWith('/') && !imageUrl.startsWith('http')) {
-        imageUrl = `/api/images/preview/${imageUrl}`;
-      }
-      setImagePreview(`${API_BASE_URL}${imageUrl}`);
+      // API returns full URLs, use them directly
+      setImagePreview(portfolio.attributes.imageURL);
       setImageFile(null);
     } else {
       resetForm();
@@ -129,12 +122,8 @@ export default function PortfolioFormDrawer({
   const handleRemoveImage = () => {
     setImageFile(null);
     if (portfolio) {
-      // Handle imageURL - check if it's just an ID or a full path
-      let imageUrl = portfolio.attributes.imageURL;
-      if (!imageUrl.startsWith('/') && !imageUrl.startsWith('http')) {
-        imageUrl = `/api/images/preview/${imageUrl}`;
-      }
-      setImagePreview(`${API_BASE_URL}${imageUrl}`);
+      // API returns full URLs, use them directly
+      setImagePreview(portfolio.attributes.imageURL);
     } else {
       setImagePreview(null);
     }

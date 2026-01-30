@@ -29,9 +29,6 @@ interface PortfolioDetailDrawerProps {
   onDelete: (portfolio: Portfolio) => void;
 }
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
-
 export default function PortfolioDetailDrawer({
   open,
   onOpenChange,
@@ -74,14 +71,7 @@ export default function PortfolioDetailDrawer({
           {/* Image */}
           <div className="relative w-full h-64 rounded-lg overflow-hidden bg-muted">
             <img
-              src={(() => {
-                // Handle imageURL - check if it's just an ID or a full path
-                let imageUrl = attributes.imageURL;
-                if (!imageUrl.startsWith('/') && !imageUrl.startsWith('http')) {
-                  imageUrl = `/api/images/preview/${imageUrl}`;
-                }
-                return `${API_BASE_URL}${imageUrl}`;
-              })()}
+              src={attributes.imageURL}
               alt={attributes.title}
               className="w-full h-full object-cover"
             />

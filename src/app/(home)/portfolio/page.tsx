@@ -45,9 +45,6 @@ import { formatDateTime } from "@/lib/date-utils";
 import PortfolioFormDrawer from "./components/PortfolioFormDrawer";
 import PortfolioDetailDrawer from "./components/PortfolioDetailDrawer";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
-
 export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,16 +155,13 @@ export default function PortfolioPage() {
       key: "attributes.imageURL",
       header: "Image",
       render: (_, portfolio) => {
-        // Handle imageURL - check if it's just an ID or a full path
-        let imageUrl = portfolio.attributes.imageURL;
-        if (!imageUrl.startsWith('/') && !imageUrl.startsWith('http')) {
-          imageUrl = `/api/images/preview/${imageUrl}`;
-        }
+        // API returns full URLs, use them directly
+        const imageUrl = portfolio.attributes.imageURL;
         
         return (
           <div className="relative w-16 h-16 rounded overflow-hidden bg-muted">
             <img
-              src={`${API_BASE_URL}${imageUrl}`}
+              src={imageUrl}
               alt={portfolio.attributes.title}
               className="w-full h-full object-cover"
             />
