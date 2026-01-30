@@ -64,6 +64,7 @@ export default function HomeLayout({ children }: HomeLayoutProps) {
     if (path === "/careers/jobs") return "Job Listings";
     if (path === "/careers/applications") return "Applications";
     if (path.startsWith("/careers/applications/")) return "Job Applications";
+    if (path === "/portfolio") return "Portfolio";
     if (path === "/users") return "Users";
     if (path === "/users/invitations") return "User Invitations";
     return "Dashboard";

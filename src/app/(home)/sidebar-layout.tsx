@@ -41,6 +41,7 @@ export default function SidebarLayout({
     careers: "Careers",
     jobs: "Job Listings",
     applications: "Applications",
+    portfolio: "Portfolio",
     users: "Users",
     invitations: "User Invitations",
   };
