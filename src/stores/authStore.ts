@@ -1,10 +1,40 @@
 import { create } from "zustand";
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8080";
 
-const formatUserData = (userData: any) => ({
+type ApiErrorPayload = {
+  message?: string;
+  error?: string;
+};
+
+type RawUserData = {
+  name?: string;
+  username?: string;
+  email?: string;
+  avatar?: string;
+  role?: string;
+};
+
+type RetryRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+};
+
+const getAuthErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError<ApiErrorPayload>(error)) {
+    return (
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      fallback
+    );
+  }
+
+  return error instanceof Error ? error.message : fallback;
+};
+
+const formatUserData = (userData: RawUserData) => ({
   name:
     userData?.name ||
     userData?.username ||
@@ -100,10 +130,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         error: null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       set({
         isLoading: false,
-        error: error.response?.data?.message || "Login failed",
+        error: getAuthErrorMessage(error, "Login failed"),
       });
       throw error;
     }
@@ -113,7 +143,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      await axios.post(`${API_BASE_URL}/api/auth/register`, {
         username,
         email,
         password,
@@ -123,10 +153,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         error: null,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       set({
         isLoading: false,
-        error: error.response?.data?.message || "Registration failed",
+        error: getAuthErrorMessage(error, "Registration failed"),
       });
       throw error;
     }
@@ -189,7 +219,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
 
       return token;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If refresh fails, logout user
       localStorage.removeItem("authToken");
       localStorage.removeItem("refreshToken");
@@ -240,11 +270,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     try {
       await loadUser();
-    } catch (error) {
+    } catch {
       try {
         await get().refresh();
         await loadUser();
-      } catch (refreshError) {
+      } catch {
         get().logout();
       }
     }
@@ -264,10 +294,10 @@ setTimeout(() => {
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
-  reject: (error: any) => void;
+  reject: (error: unknown) => void;
 }> = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
       reject(error);
@@ -284,10 +314,17 @@ let refreshTokenFn: (() => Promise<string>) | null = null;
 
 axios.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetryRequestConfig | undefined;
+    const requestUrl = originalRequest?.url || "";
+    const isLoginRequest = requestUrl.includes("/api/auth/login");
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isLoginRequest
+    ) {
       if (isRefreshing) {
         // If refresh is already in progress, add to queue
         return new Promise((resolve, reject) => {
