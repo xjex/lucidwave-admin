@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AlertTriangle, ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   getContacts,
   createContact,
@@ -13,8 +13,6 @@ import {
 } from "@/services/contactsService";
 import { useInvoiceStore } from "@/stores/invoiceStore";
 import { useReceiptStore } from "@/stores/receiptStore";
-import { toast } from "sonner";
-import { formatDateTime } from "@/lib/date-utils";
 import {
   ContactListHeader,
   ContactTable,
@@ -41,7 +39,7 @@ export default function ContactListPage() {
     null
   );
 
-  // Invoice and Receipt store hooks
+  // Invoice store
   const {
     files: invoiceFiles,
     email: invoiceEmail,
@@ -55,6 +53,7 @@ export default function ContactListPage() {
     resetForm: resetInvoiceForm,
   } = useInvoiceStore();
 
+  // Receipt store
   const {
     files: receiptFiles,
     receiverName,
@@ -76,7 +75,6 @@ export default function ContactListPage() {
     resetForm: resetReceiptForm,
   } = useReceiptStore();
 
-  // Form state for creating contacts
   const [newContact, setNewContact] = useState({
     name: "",
     email: "",
@@ -84,7 +82,6 @@ export default function ContactListPage() {
     phone: "",
   });
 
-  // Form state for editing contacts
   const [editContact, setEditContact] = useState({
     name: "",
     email: "",
@@ -111,11 +108,9 @@ export default function ContactListPage() {
   };
 
   const handleCreateContact = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Optimistic update - add contact immediately to UI
+    e?.preventDefault();
     const optimisticContact: ContactListItem = {
-      id: `temp-${Date.now()}`, // Temporary ID
+      id: `temp-${Date.now()}`,
       name: newContact.name,
       email: newContact.email,
       company: newContact.company,
@@ -123,53 +118,42 @@ export default function ContactListPage() {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
-
-    // Add to contacts list immediately
     setContacts((prev) => [optimisticContact, ...prev]);
     setCreateModalOpen(false);
     const contactData = { ...newContact };
     setNewContact({ name: "", email: "", company: "", phone: "" });
-
     try {
-      // Make API call
       const createdContact = await createContact(contactData);
-
-      // Replace optimistic contact with real one
       setContacts((prev) =>
-        prev.map((contact) =>
-          contact.id === optimisticContact.id ? createdContact : contact
-        )
+        prev.map((c) => (c.id === optimisticContact.id ? createdContact : c))
       );
     } catch (err: any) {
-      // Remove optimistic contact on error
       setContacts((prev) =>
-        prev.filter((contact) => contact.id !== optimisticContact.id)
+        prev.filter((c) => c.id !== optimisticContact.id)
       );
       setError(err.response?.data?.message || "Failed to create contact");
-      setCreateModalOpen(true); // Re-open modal so user can try again
+      setCreateModalOpen(true);
     }
   };
 
-  const handleDeleteContact = async (contact: ContactListItem) => {
+  const handleDeleteContact = (contact: ContactListItem) => {
     setContactToDelete(contact);
     setDeleteConfirmOpen(true);
   };
 
   const handleSendInvoice = (contact: ContactListItem) => {
     setActionContact(contact);
-    setInvoiceEmail(contact.email); // Pre-populate email from contact
-    resetInvoiceForm(); // Reset form but keep the email we just set
+    setInvoiceEmail(contact.email);
+    resetInvoiceForm();
     setInvoiceEmail(contact.email);
     setSendInvoiceModalOpen(true);
   };
 
   const handleSendReceipt = (contact: ContactListItem) => {
     setActionContact(contact);
-    setReceiverEmail(contact.email); // Pre-populate email from contact
-    setReceiverName(contact.name); // Pre-populate name from contact
-    resetReceiptForm(); // Reset form but keep the data we just set
     setReceiverEmail(contact.email);
-    setReceiverName(contact.name);
+    resetReceiptForm();
+    setReceiverEmail(contact.email);
     setSendReceiptModalOpen(true);
   };
 
@@ -178,77 +162,61 @@ export default function ContactListPage() {
     setEditContact({
       name: contact.name,
       email: contact.email,
-      company: contact.company,
-      phone: contact.phone,
+      company: contact.company || "",
+      phone: contact.phone || "",
     });
     setEditModalOpen(true);
   };
 
-  const handleSendInvoiceSubmit = async () => {
+  const handleEditContactSubmit = async (e: React.FormEvent) => {
+    e?.preventDefault();
+    if (!actionContact) return;
+    const previousContact = actionContact;
+    setContacts((prev) =>
+      prev.map((c) =>
+        c.id === actionContact.id
+          ? { ...c, ...editContact, updated_at: new Date().toISOString() }
+          : c
+      )
+    );
+    setEditModalOpen(false);
     try {
-      await sendInvoices();
-      // The success/error handling is done in the modal with toast notifications
-    } catch (error) {
-      console.error("Invoice sending failed:", error);
-      // Error is handled by the toast in the modal
+      await updateContact(actionContact.id, editContact);
+    } catch (err: any) {
+      setContacts((prev) =>
+        prev.map((c) => (c.id === previousContact.id ? previousContact : c))
+      );
+      setError(err.response?.data?.message || "Failed to update contact");
+      setEditModalOpen(true);
     }
+  };
+
+  const handleSendInvoiceSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    await sendInvoices();
   };
 
   const handleSendReceiptSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault?.();
+    e?.preventDefault();
     await sendReceipts();
-  };
-
-  const handleEditContactSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!actionContact) return;
-
-    try {
-      // Make API call to update contact
-      const response = await updateContact(actionContact.id, editContact);
-
-      // Update contact in local state
-      setContacts((prev) =>
-        prev.map((contact) =>
-          contact.id === actionContact.id
-            ? {
-                ...contact,
-                ...editContact,
-                updated_at: new Date().toISOString(),
-              }
-            : contact
-        )
-      );
-
-      setEditModalOpen(false);
-      setActionContact(null);
-      toast.success("Contact updated successfully!");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to update contact");
-    }
   };
 
   const confirmDelete = async () => {
     if (!contactToDelete) return;
-
     const contactToRemove = contactToDelete;
     setDeleteConfirmOpen(false);
-
-    // Optimistic update - remove contact immediately from UI
     setContacts((prev) =>
-      prev.filter((contact) => contact.id !== contactToRemove.id)
+      prev.filter((c) => c.id !== contactToRemove.id)
     );
     setContactToDelete(null);
-
     try {
-      // Make API call
       await deleteContact(contactToRemove.id);
     } catch (err: any) {
-      // Add contact back on error
       setContacts((prev) =>
         [...prev, contactToRemove].sort(
           (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
         )
       );
       setError(err.response?.data?.message || "Failed to delete contact");
@@ -257,64 +225,90 @@ export default function ContactListPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading contacts...</p>
-          </div>
+      <div className="flex h-screen items-center justify-center bg-[#f4efe4]">
+        <div className="text-center">
+          <div className="mx-auto mb-4 size-8 border-2 border-[#241d18]/15 border-t-[#8b4a36] animate-spin" />
+          <p className="font-mono text-xs uppercase text-[#6f665d]">
+            Loading contacts…
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
-      <ContactListHeader
-        onAddContact={() => setCreateModalOpen(true)}
-        totalContacts={meta?.total}
-      />
+    <div className="min-h-screen bg-[#f4efe4] text-[#241d18]">
+      {/* Top header */}
+      <div className="border-b border-[#241d18]/15 bg-[#fffaf1]">
+        <div className="mx-auto max-w-7xl px-6 py-8">
+          <div className="mb-2 flex w-fit items-center gap-2 border border-[#241d18]/15 bg-[#f4efe4] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+            <span className="size-2 bg-[#d95c3f]" />
+            Contacts
+          </div>
+          <h1 className="font-serif text-5xl leading-[1.05] text-[#241d18]">
+            Contact List
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#6f665d]">
+            Manage your business contacts. Send invoices, receipts, or update
+            details from one place.
+          </p>
+        </div>
+      </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <ContactListHeader
+          onAddContact={() => setCreateModalOpen(true)}
+          totalContacts={meta?.total}
+        />
 
-      <ContactTable
-        contacts={contacts}
-        loading={loading}
-        onSendInvoice={handleSendInvoice}
-        onSendReceipt={handleSendReceipt}
-        onEditContact={handleEditContact}
-        onDeleteContact={handleDeleteContact}
+        {error && (
+          <div className="mb-6 mt-6 flex items-start gap-3 border border-[#b73823] bg-[#fff1e8] px-4 py-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#7d2418]" />
+            <p className="text-sm text-[#7d2418]">{error}</p>
+          </div>
+        )}
+
+        <div className="mt-6">
+          <ContactTable
+            contacts={contacts}
+            loading={loading}
+            onSendInvoice={handleSendInvoice}
+            onSendReceipt={handleSendReceipt}
+            onEditContact={handleEditContact}
+            onDeleteContact={handleDeleteContact}
           />
+        </div>
 
-          {meta && meta.pages > 1 && (
-            <div className="flex items-center justify-between pt-4">
-              <div className="text-sm text-muted-foreground">
-                Page {meta.page} of {meta.pages}
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchContacts(meta.page - 1)}
-                  disabled={meta.page <= 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchContacts(meta.page + 1)}
-                  disabled={meta.page >= meta.pages}
-                >
-                  Next
-                </Button>
-              </div>
+        {meta && meta.pages > 1 && (
+          <div className="mt-6 flex items-center justify-between border border-[#241d18]/15 bg-[#fffaf1] px-5 py-3 shadow-[6px_6px_0_#241d18]">
+            <span className="font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+              Page {meta.page} of {meta.pages} · {meta.total} total
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchContacts(meta.page - 1)}
+                disabled={meta.page <= 1}
+                className="rounded-none border-[#241d18]/20 bg-white font-mono text-[11px] uppercase tracking-wide text-[#574d43] hover:bg-[#fffaf1]"
+              >
+                <ArrowLeft className="size-3.5 mr-1" />
+                Prev
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchContacts(meta.page + 1)}
+                disabled={meta.page >= meta.pages}
+                className="rounded-none border-[#241d18]/20 bg-white font-mono text-[11px] uppercase tracking-wide text-[#574d43] hover:bg-[#fffaf1]"
+              >
+                Next
+                <ArrowRight className="size-3.5 ml-1" />
+              </Button>
             </div>
-          )}
+          </div>
+        )}
+      </div>
 
       <CreateContactModal
         isOpen={createModalOpen}

@@ -1,44 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ArrowLeft, ArrowRight, Mail, Phone, Building2, MessageSquare, Calendar, User, Clock, Inbox, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import {
-  DataTable,
-  TableColumn,
-  TableAction,
-} from "@/components/ui/data-table";
 import {
   getContacts,
   Contact,
   ContactsResponse,
 } from "@/services/contactService";
-import {
-  IconMail,
-  IconPhone,
-  IconBuilding,
-  IconMessage,
-  IconCalendar,
-  IconUser,
-  IconClock,
-} from "@tabler/icons-react";
 import { formatDateTime, formatDateTimeWithSeconds } from "@/lib/date-utils";
+
+const inquiryColors: Record<string, string> = {
+  general: "border-[#8b4a36]/30 bg-[#8b4a36]/8 text-[#8b4a36]",
+  support: "border-[#3d7a5c]/30 bg-[#3d7a5c]/8 text-[#3d7a5c]",
+  sales: "border-[#d95c3f]/30 bg-[#d95c3f]/8 text-[#d95c3f]",
+  partnership: "border-[#e0b84f]/30 bg-[#e0b84f]/8 text-[#8a6d1f]",
+};
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -71,275 +54,280 @@ export default function ContactsPage() {
     setModalOpen(true);
   };
 
-  // Define table columns for website contacts
-  const columns: TableColumn<Contact>[] = [
-    {
-      key: "attributes.firstname",
-      header: "Name",
-      render: (_, contact) =>
-        `${contact.attributes.firstname} ${contact.attributes.lastname}`,
-    },
-    {
-      key: "attributes.email",
-      header: "Email",
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <IconMail className="h-4 w-4 text-muted-foreground" />
-          {value}
-        </div>
-      ),
-    },
-    {
-      key: "attributes.company",
-      header: "Company",
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <IconBuilding className="h-4 w-4 text-muted-foreground" />
-          {value}
-        </div>
-      ),
-    },
-    {
-      key: "attributes.phonenumber",
-      header: "Phone",
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <IconPhone className="h-4 w-4 text-muted-foreground" />
-          {value}
-        </div>
-      ),
-    },
-    {
-      key: "attributes.inquiry_type",
-      header: "Inquiry Type",
-      render: (value) => <Badge variant="outline">{value}</Badge>,
-    },
-    {
-      key: "attributes.message",
-      header: "Message",
-      render: (value) => (
-        <div className="max-w-xs truncate" title={value}>
-          <div className="flex items-center gap-2">
-            <IconMessage className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="truncate">{value}</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "attributes.created_at",
-      header: "Submitted",
-      render: (value) => (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <IconCalendar className="h-4 w-4" />
-          {formatDateTime(value)}
-        </div>
-      ),
-    },
-  ];
-
   const handleCloseModal = () => {
     setModalOpen(false);
     setSelectedContact(null);
   };
 
+  const inquiryPill = (type: string) => {
+    const style = inquiryColors[type] || inquiryColors.general;
+    return (
+      <span className={`inline-flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide ${style}`}>
+        {type}
+      </span>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading contacts...</p>
-          </div>
+      <div className="flex h-screen items-center justify-center bg-[#f4efe4]">
+        <div className="text-center">
+          <div className="mx-auto mb-4 size-8 border-2 border-[#241d18]/15 border-t-[#8b4a36] animate-spin" />
+          <p className="font-mono text-xs uppercase text-[#6f665d]">Loading contacts…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Website Contacts</h1>
-          <p className="text-muted-foreground">
-            Manage contact form submissions from your website
+    <div className="min-h-screen bg-[#f4efe4] text-[#241d18]">
+      {/* Top header */}
+      <div className="border-b border-[#241d18]/15 bg-[#fffaf1]">
+        <div className="mx-auto max-w-7xl px-6 py-8">
+          <div className="mb-2 flex w-fit items-center gap-2 border border-[#241d18]/15 bg-[#f4efe4] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+            <span className="size-2 bg-[#d95c3f]" />
+            Website Reach Out
+          </div>
+          <h1 className="font-serif text-5xl leading-[1.05] text-[#241d18]">
+            Contact Submissions
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#6f665d]">
+            Manage contact form submissions from your website. Click any row to
+            view the full details.
           </p>
         </div>
-        {meta && (
-          <div className="text-sm text-muted-foreground">
-            Showing {contacts.length} of {meta.total} contacts
-          </div>
-        )}
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        {/* Count */}
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <p className="font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+              Submissions
+            </p>
+            <p className="mt-1 text-sm text-[#574d43]">
+              {meta
+                ? `${meta.total} submission${meta.total !== 1 ? "s" : ""} total`
+                : "Loading count…"}
+            </p>
+          </div>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact Submissions</CardTitle>
-          <CardDescription>
-            View and manage all contact form submissions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            data={contacts}
-            columns={columns}
-            loading={false}
-            emptyMessage="No contact submissions found"
-            onRowClick={handleContactClick}
-          />
+        {/* Error */}
+        {error && (
+          <div className="mb-6 flex items-start gap-3 border border-[#b73823] bg-[#fff1e8] px-4 py-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#7d2418]" />
+            <p className="text-sm text-[#7d2418]">{error}</p>
+          </div>
+        )}
 
+        {/* Table */}
+        <div className="border border-[#241d18]/15 bg-[#fffaf1] shadow-[10px_10px_0_#241d18]">
+          {/* Header */}
+          <div className="grid grid-cols-[1fr_1fr_140px_120px_120px_1fr_140px] items-center border-b border-[#241d18]/15 bg-[#f4efe4] px-5 py-3 font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+            <span>Name</span>
+            <span>Email</span>
+            <span>Company</span>
+            <span>Phone</span>
+            <span>Inquiry</span>
+            <span>Message</span>
+            <span>Submitted</span>
+          </div>
+
+          {contacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center px-5 py-16">
+              <Inbox className="mb-3 size-10 text-[#6f665d]/50" />
+              <p className="font-mono text-xs uppercase text-[#6f665d]">No submissions yet</p>
+            </div>
+          ) : (
+            contacts.map((contact) => (
+              <button
+                key={contact.id}
+                onClick={() => handleContactClick(contact)}
+                className="grid w-full grid-cols-[1fr_1fr_140px_120px_120px_1fr_140px] items-center border-b border-[#241d18]/10 px-5 py-4 text-left transition-colors hover:bg-[#f4efe4]/60"
+              >
+                <div className="flex items-center gap-2 overflow-hidden pr-4">
+                  <User className="size-3.5 shrink-0 text-[#8b4a36]" />
+                  <span className="truncate text-sm font-medium text-[#241d18]">
+                    {contact.attributes.firstname} {contact.attributes.lastname}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 overflow-hidden pr-4">
+                  <Mail className="size-3.5 shrink-0 text-[#8b4a36]" />
+                  <span className="truncate font-mono text-sm text-[#574d43]">
+                    {contact.attributes.email}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 overflow-hidden pr-4">
+                  <Building2 className="size-3.5 shrink-0 text-[#8b4a36]" />
+                  <span className="truncate text-sm text-[#574d43]">
+                    {contact.attributes.company || (<span className="text-[#9d9389]">—</span>)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 overflow-hidden pr-4">
+                  <Phone className="size-3.5 shrink-0 text-[#8b4a36]" />
+                  <span className="truncate font-mono text-sm text-[#574d43]">
+                    {contact.attributes.phonenumber || (<span className="text-[#9d9389]">—</span>)}
+                  </span>
+                </div>
+                <div className="pr-4">{inquiryPill(contact.attributes.inquiry_type)}</div>
+                <div className="flex items-center gap-2 overflow-hidden pr-4">
+                  <MessageSquare className="size-3.5 shrink-0 text-[#8b4a36]" />
+                  <span
+                    className="truncate text-sm text-[#574d43]"
+                    title={contact.attributes.message}
+                  >
+                    {contact.attributes.message}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-[#6f665d]">
+                  <Calendar className="size-3.5 shrink-0" />
+                  {formatDateTime(contact.attributes.created_at)}
+                </div>
+              </button>
+            ))
+          )}
+
+          {/* Pagination */}
           {meta && meta.pages > 1 && (
-            <div className="flex items-center justify-between pt-4">
-              <div className="text-sm text-muted-foreground">
-                Page {meta.page} of {meta.pages}
-              </div>
+            <div className="flex items-center justify-between border-t border-[#241d18]/15 bg-[#f4efe4] px-5 py-3">
+              <span className="font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+                Page {meta.page} of {meta.pages} · {meta.total} total
+              </span>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => fetchContacts(meta.page - 1)}
                   disabled={meta.page <= 1}
+                  className="rounded-none border-[#241d18]/20 bg-white font-mono text-[11px] uppercase tracking-wide text-[#574d43] hover:bg-[#fffaf1]"
                 >
-                  Previous
+                  <ArrowLeft className="size-3.5 mr-1" />
+                  Prev
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => fetchContacts(meta.page + 1)}
                   disabled={meta.page >= meta.pages}
+                  className="rounded-none border-[#241d18]/20 bg-white font-mono text-[11px] uppercase tracking-wide text-[#574d43] hover:bg-[#fffaf1]"
                 >
                   Next
+                  <ArrowRight className="size-3.5 ml-1" />
                 </Button>
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Contact Details Modal */}
       <Dialog open={modalOpen} onOpenChange={handleCloseModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <IconUser className="h-5 w-5" />
+        <DialogContent className="max-w-2xl rounded-none border-[#241d18]/20 bg-[#fffaf1] p-0 shadow-[14px_14px_0_#241d18]">
+          <DialogHeader className="border-b border-[#241d18]/15 bg-[#f4efe4] px-6 py-5">
+            <DialogTitle className="flex items-center gap-2 font-serif text-xl text-[#241d18]">
+              <User className="size-5 text-[#8b4a36]" />
               Contact Details
             </DialogTitle>
-            <DialogDescription>
-              Full information about the contact submission
-            </DialogDescription>
           </DialogHeader>
 
           {selectedContact && (
-            <div className="space-y-6">
-              {/* Contact Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <IconUser className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Name</span>
+            <div className="px-6 py-6 space-y-6">
+              {/* Info grid */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {[
+                  {
+                    icon: User,
+                    label: "Name",
+                    value: `${selectedContact.attributes.firstname} ${selectedContact.attributes.lastname}`,
+                  },
+                  {
+                    icon: Mail,
+                    label: "Email",
+                    value: selectedContact.attributes.email,
+                  },
+                  {
+                    icon: Building2,
+                    label: "Company",
+                    value: selectedContact.attributes.company || "—",
+                  },
+                  {
+                    icon: Phone,
+                    label: "Phone",
+                    value: selectedContact.attributes.phonenumber || "—",
+                  },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Icon className="size-3.5 text-[#8b4a36]" />
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                        {label}
+                      </span>
+                    </div>
+                    <p className="pl-5 text-sm font-medium text-[#241d18]">{value}</p>
                   </div>
-                  <p className="text-sm pl-6">
-                    {selectedContact.attributes.firstname}{" "}
-                    {selectedContact.attributes.lastname}
-                  </p>
-                </div>
+                ))}
+              </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <IconMail className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Email</span>
-                  </div>
-                  <p className="text-sm pl-6">
-                    {selectedContact.attributes.email}
-                  </p>
+              <div className="border-t border-[#241d18]/10 pt-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="size-3.5 text-[#8b4a36]" />
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                    Inquiry Type
+                  </span>
                 </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <IconBuilding className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Company</span>
-                  </div>
-                  <p className="text-sm pl-6">
-                    {selectedContact.attributes.company}
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <IconPhone className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Phone</span>
-                  </div>
-                  <p className="text-sm pl-6">
-                    {selectedContact.attributes.phonenumber}
-                  </p>
+                <div className="pl-5">
+                  {inquiryPill(selectedContact.attributes.inquiry_type)}
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Inquiry Details */}
-              <div className="space-y-3">
+              <div className="border-t border-[#241d18]/10 pt-5 space-y-3">
                 <div className="flex items-center gap-2">
-                  <IconMessage className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Inquiry Type</span>
+                  <MessageSquare className="size-3.5 text-[#8b4a36]" />
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                    Message
+                  </span>
                 </div>
-                <Badge variant="outline" className="ml-6">
-                  {selectedContact.attributes.inquiry_type}
-                </Badge>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <IconMessage className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Message</span>
-                </div>
-                <div className="ml-6 p-3 bg-muted rounded-lg">
-                  <p className="text-sm whitespace-pre-wrap">
+                <div className="ml-5 border border-[#241d18]/10 bg-[#f4efe4] p-4">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-[#574d43]">
                     {selectedContact.attributes.message}
                   </p>
                 </div>
               </div>
 
-              <Separator />
-
-              {/* Timestamps */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <IconClock className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Created</span>
-                  </div>
-                  <p className="text-sm pl-6">
-                    {formatDateTimeWithSeconds(
+              <div className="grid grid-cols-1 gap-4 border-t border-[#241d18]/10 pt-5 md:grid-cols-2">
+                {[
+                  {
+                    icon: Clock,
+                    label: "Created",
+                    value: formatDateTimeWithSeconds(
                       selectedContact.attributes.created_at
-                    )}
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <IconClock className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Last Updated</span>
-                  </div>
-                  <p className="text-sm pl-6">
-                    {formatDateTimeWithSeconds(
+                    ),
+                  },
+                  {
+                    icon: Clock,
+                    label: "Last Updated",
+                    value: formatDateTimeWithSeconds(
                       selectedContact.attributes.updated_at
-                    )}
-                  </p>
-                </div>
+                    ),
+                  },
+                ].map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Icon className="size-3.5 text-[#8b4a36]" />
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                        {label}
+                      </span>
+                    </div>
+                    <p className="pl-5 font-mono text-sm text-[#574d43]">{value}</p>
+                  </div>
+                ))}
               </div>
 
-              {/* Contact ID */}
-              <div className="pt-4 border-t">
-                <div className="text-xs text-muted-foreground">
+              <div className="border-t border-[#241d18]/10 pt-4">
+                <p className="font-mono text-[10px] uppercase tracking-wider text-[#9d9389]">
                   Contact ID: {selectedContact.id}
-                </div>
+                </p>
               </div>
             </div>
           )}

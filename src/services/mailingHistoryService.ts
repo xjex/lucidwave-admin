@@ -115,3 +115,30 @@ export async function downloadMailingHistory(id: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Build a proxied view URL for a mailing history file.
+ * Appends the auth token as a query param since iframe requests can't send headers.
+ */
+export function getMailingHistoryViewUrl(
+  mailingId: string,
+  fileIndex: number
+): string {
+  const baseUrl = `${API_URL}/${mailingId}/files/${fileIndex}/view`;
+
+  // Get token from axios defaults (set after login)
+  const authHeader = axios.defaults.headers.common["Authorization"] as
+    | string
+    | undefined;
+  const token = authHeader?.startsWith("Bearer ")
+    ? authHeader.substring(7)
+    : authHeader;
+
+  if (!token) {
+    return baseUrl;
+  }
+
+  const url = new URL(baseUrl);
+  url.searchParams.set("token", token);
+  return url.toString();
+}

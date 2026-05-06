@@ -1,348 +1,346 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import {
+  Briefcase,
+  Users,
+  Plus,
+  ArrowRight,
+  MapPin,
+  Clock,
+  Inbox,
+  AlertTriangle,
+  TrendingUp,
+  CircleDot,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  DataTable,
-  TableColumn,
-} from "@/components/ui/data-table";
-import {
-  getCareers,
-  deleteCareer,
-  toggleCareerStatus,
-} from "@/services/careerService";
+import { getCareers } from "@/services/careerService";
 import { Career, CareersResponse } from "@/types/career";
-import {
-  IconPlus,
-  IconEdit,
-  IconTrash,
-  IconMapPin,
-  IconBriefcase,
-  IconCalendar,
-  IconCurrencyDollar,
-} from "@tabler/icons-react";
+import { getApplications } from "@/services/applicationService";
+import { JobApplication, ApplicationsResponse } from "@/types/application";
 import { formatDateTime } from "@/lib/date-utils";
-import CareerFormModal from "./components/CareerFormModal";
 
-export default function CareersPage() {
+interface DashboardStats {
+  totalJobs: number;
+  activeJobs: number;
+  totalApplications: number;
+}
+
+export default function CareersDashboardPage() {
   const [careers, setCareers] = useState<Career[]>([]);
+  const [applications, setApplications] = useState<JobApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [meta, setMeta] = useState<CareersResponse["meta"] | null>(null);
-  const [selectedCareer, setSelectedCareer] = useState<Career | null>(null);
-  const [formModalOpen, setFormModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [careerToDelete, setCareerToDelete] = useState<Career | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalJobs: 0,
+    activeJobs: 0,
+    totalApplications: 0,
+  });
 
   useEffect(() => {
-    fetchCareers();
+    loadDashboard();
   }, []);
 
-  const fetchCareers = async (page: number = 1) => {
+  const loadDashboard = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getCareers(page, 10);
-      setCareers(response.data);
-      setMeta(response.meta);
+
+      const [careersRes, appsRes] = await Promise.all([
+        getCareers(1, 10),
+        getApplications(1, 10),
+      ]);
+
+      setCareers(careersRes.data);
+      setApplications(appsRes.data);
+      setStats({
+        totalJobs: careersRes.meta.total,
+        activeJobs: careersRes.data.filter((c) => c.attributes.is_active).length,
+        totalApplications: appsRes.meta.total,
+      });
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load careers");
+      setError(err.response?.data?.message || "Failed to load dashboard");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateClick = () => {
-    setSelectedCareer(null);
-    setFormModalOpen(true);
-  };
+  const activePercentage =
+    stats.totalJobs > 0
+      ? Math.round((stats.activeJobs / stats.totalJobs) * 100)
+      : 0;
 
-  const handleEditClick = (career: Career) => {
-    setSelectedCareer(career);
-    setFormModalOpen(true);
-  };
-
-  const handleDeleteClick = (career: Career) => {
-    setCareerToDelete(career);
-    setDeleteModalOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!careerToDelete) return;
-    
-    try {
-      setIsDeleting(true);
-      await deleteCareer(careerToDelete.id);
-      setDeleteModalOpen(false);
-      setCareerToDelete(null);
-      fetchCareers();
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to delete career");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleToggleStatus = async (career: Career) => {
-    try {
-      await toggleCareerStatus(career.id, !career.attributes.is_active);
-      fetchCareers();
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to update status");
-    }
-  };
-
-  const handleFormSuccess = () => {
-    setFormModalOpen(false);
-    setSelectedCareer(null);
-    fetchCareers();
-  };
-
-  const formatSalary = (career: Career) => {
-    const range = career.attributes.salary_range;
-    if (!range || (!range.min && !range.max)) return "Not specified";
-    const currency = range.currency || "USD";
-    if (range.min && range.max) {
-      return `${currency} ${range.min.toLocaleString()} - ${range.max.toLocaleString()}`;
-    }
-    if (range.min) return `${currency} ${range.min.toLocaleString()}+`;
-    return `Up to ${currency} ${range.max?.toLocaleString()}`;
-  };
-
-  const columns: TableColumn<Career>[] = [
+  const statCards = [
     {
-      key: "attributes.title",
-      header: "Title",
-      render: (_, career) => (
-        <div className="font-medium">{career.attributes.title}</div>
-      ),
+      label: "Total Jobs",
+      value: stats.totalJobs,
+      icon: Briefcase,
+      color: "text-[#8b4a36]",
+      bg: "bg-[#8b4a36]/8",
+      border: "border-[#8b4a36]/20",
     },
     {
-      key: "attributes.department",
-      header: "Department",
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <IconBriefcase className="h-4 w-4 text-muted-foreground" />
-          {value}
-        </div>
-      ),
+      label: "Active Listings",
+      value: stats.activeJobs,
+      sub: `${activePercentage}% of total`,
+      icon: CircleDot,
+      color: "text-[#3d7a5c]",
+      bg: "bg-[#3d7a5c]/8",
+      border: "border-[#3d7a5c]/20",
     },
     {
-      key: "attributes.location",
-      header: "Location",
-      render: (value) => (
-        <div className="flex items-center gap-2">
-          <IconMapPin className="h-4 w-4 text-muted-foreground" />
-          {value}
-        </div>
-      ),
+      label: "Total Applicants",
+      value: stats.totalApplications,
+      icon: Users,
+      color: "text-[#d95c3f]",
+      bg: "bg-[#d95c3f]/8",
+      border: "border-[#d95c3f]/20",
     },
     {
-      key: "attributes.type",
-      header: "Type",
-      render: (value) => (
-        <Badge variant="outline" className="capitalize">
-          {value}
-        </Badge>
-      ),
-    },
-    {
-      key: "attributes.salary_range",
-      header: "Salary",
-      render: (_, career) => (
-        <div className="flex items-center gap-2">
-          <IconCurrencyDollar className="h-4 w-4 text-muted-foreground" />
-          {formatSalary(career)}
-        </div>
-      ),
-    },
-    {
-      key: "attributes.is_active",
-      header: "Status",
-      render: (value, career) => (
-        <Badge
-          variant={value ? "default" : "secondary"}
-          className="cursor-pointer"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleToggleStatus(career);
-          }}
-        >
-          {value ? "Active" : "Inactive"}
-        </Badge>
-      ),
-    },
-    {
-      key: "attributes.created_at",
-      header: "Created",
-      render: (value) => (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <IconCalendar className="h-4 w-4" />
-          {formatDateTime(value)}
-        </div>
-      ),
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      render: (_, career) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEditClick(career);
-            }}
-          >
-            <IconEdit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeleteClick(career);
-            }}
-          >
-            <IconTrash className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
+      label: "Avg. per Job",
+      value:
+        stats.totalJobs > 0
+          ? Math.round(stats.totalApplications / stats.totalJobs)
+          : 0,
+      icon: TrendingUp,
+      color: "text-[#e0b84f]",
+      bg: "bg-[#e0b84f]/8",
+      border: "border-[#e0b84f]/20",
     },
   ];
 
   if (loading) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading careers...</p>
-          </div>
+      <div className="flex h-screen items-center justify-center bg-[#f4efe4]">
+        <div className="text-center">
+          <div className="mx-auto mb-4 size-8 border-2 border-[#241d18]/15 border-t-[#8b4a36] animate-spin" />
+          <p className="font-mono text-xs uppercase text-[#6f665d]">Loading dashboard…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 pt-0">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Careers</h1>
-          <p className="text-muted-foreground">
-            Manage job listings and career opportunities
+    <div className="min-h-screen bg-[#f4efe4] text-[#241d18]">
+      {/* Header */}
+      <div className="border-b border-[#241d18]/15 bg-[#fffaf1]">
+        <div className="mx-auto max-w-7xl px-6 py-8">
+          <div className="mb-2 flex w-fit items-center gap-2 border border-[#241d18]/15 bg-[#f4efe4] px-3 py-1.5 font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+            <span className="size-2 bg-[#d95c3f]" />
+            Careers
+          </div>
+          <h1 className="font-serif text-5xl leading-[1.05] text-[#241d18]">
+            Hiring Dashboard
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#6f665d]">
+            Overview of job listings, applications, and pipeline health.
           </p>
         </div>
-        <Button onClick={handleCreateClick}>
-          <IconPlus className="h-4 w-4 mr-2" />
-          Add Career
-        </Button>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        {error && (
+          <div className="mb-6 flex items-start gap-3 border border-[#b73823] bg-[#fff1e8] px-4 py-3">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[#7d2418]" />
+            <p className="text-sm text-[#7d2418]">{error}</p>
+          </div>
+        )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Job Listings</CardTitle>
-          <CardDescription>
-            {meta ? `${meta.total} total careers` : "View and manage all job postings"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DataTable
-            data={careers}
-            columns={columns}
-            loading={false}
-            emptyMessage="No careers found. Create your first job listing!"
-          />
-
-          {meta && meta.pages > 1 && (
-            <div className="flex items-center justify-between pt-4">
-              <div className="text-sm text-muted-foreground">
-                Page {meta.page} of {meta.pages}
+        {/* Stat Cards */}
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {statCards.map((card) => (
+            <div
+              key={card.label}
+              className={`flex items-center gap-4 border ${card.border} ${card.bg} p-5`}
+            >
+              <div className="grid size-10 place-items-center border border-[#241d18]/10 bg-white">
+                <card.icon className={`size-5 ${card.color}`} />
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchCareers(meta.page - 1)}
-                  disabled={meta.page <= 1}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fetchCareers(meta.page + 1)}
-                  disabled={meta.page >= meta.pages}
-                >
-                  Next
-                </Button>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                  {card.label}
+                </p>
+                <p className="font-serif text-3xl text-[#241d18]">{card.value}</p>
+                {card.sub && (
+                  <p className="font-mono text-[10px] text-[#6f665d]">{card.sub}</p>
+                )}
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          ))}
+        </div>
 
-      {/* Career Form Modal */}
-      <CareerFormModal
-        open={formModalOpen}
-        onOpenChange={setFormModalOpen}
-        career={selectedCareer}
-        onSuccess={handleFormSuccess}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Career</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{careerToDelete?.attributes.title}"? 
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+        {/* Quick Actions */}
+        <div className="mb-8 flex flex-wrap gap-3">
+          <Link href="/careers/jobs">
+            <Button className="h-11 rounded-none border border-[#241d18] bg-[#241d18] font-mono text-[11px] uppercase tracking-wide text-[#fffaf1] shadow-none transition-transform hover:-translate-y-0.5 hover:bg-[#8b4a36]">
+              <Briefcase className="size-4 mr-2" />
+              Manage Job Listings
+              <ArrowRight className="size-3.5 ml-2" />
+            </Button>
+          </Link>
+          <Link href="/careers/applications">
+            <Button className="h-11 rounded-none border border-[#241d18] bg-[#241d18] font-mono text-[11px] uppercase tracking-wide text-[#fffaf1] shadow-none transition-transform hover:-translate-y-0.5 hover:bg-[#8b4a36]">
+              <Users className="size-4 mr-2" />
+              View Applications
+              <ArrowRight className="size-3.5 ml-2" />
+            </Button>
+          </Link>
+          <Link href="/careers/jobs">
             <Button
               variant="outline"
-              onClick={() => setDeleteModalOpen(false)}
-              disabled={isDeleting}
+              className="h-11 rounded-none border-[#241d18]/20 bg-white font-mono text-[11px] uppercase tracking-wide text-[#574d43] shadow-none hover:bg-[#f4efe4]"
             >
-              Cancel
+              <Plus className="size-4 mr-2" />
+              Add Job Listing
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={isDeleting}
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </Link>
+        </div>
+
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Recent Jobs */}
+          <div className="border border-[#241d18]/15 bg-[#fffaf1] shadow-[10px_10px_0_#241d18]">
+            <div className="flex items-center justify-between border-b border-[#241d18]/15 bg-[#f4efe4] px-5 py-4">
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+                  Recent Listings
+                </p>
+                <p className="mt-1 text-sm text-[#574d43]">Latest job postings</p>
+              </div>
+              <Link
+                href="/careers/jobs"
+                className="flex items-center gap-1 font-mono text-[11px] uppercase tracking-wide text-[#8b4a36] transition-colors hover:text-[#241d18]"
+              >
+                View all
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+
+            <div className="divide-y divide-[#241d18]/10">
+              {careers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-5 py-12">
+                  <Inbox className="mb-3 size-10 text-[#6f665d]/50" />
+                  <p className="font-mono text-xs uppercase text-[#6f665d]">
+                    No job listings yet
+                  </p>
+                </div>
+              ) : (
+                careers.slice(0, 6).map((career) => (
+                  <div
+                    key={career.id}
+                    className="flex items-start justify-between px-5 py-4 transition-colors hover:bg-[#f4efe4]/60"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-medium text-[#241d18]">
+                          {career.attributes.title}
+                        </span>
+                        {career.attributes.is_active ? (
+                          <span className="inline-block size-2 bg-[#3d7a5c]" title="Active" />
+                        ) : (
+                          <span className="inline-block size-2 bg-[#9d9389]" title="Inactive" />
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-center gap-3 text-xs text-[#6f665d]">
+                        <span className="flex items-center gap-1">
+                          <Briefcase className="size-3" />
+                          {career.attributes.department}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="size-3" />
+                          {career.attributes.location}
+                        </span>
+                        <span className="border border-[#241d18]/10 px-1.5 py-0.5 font-mono text-[10px] uppercase">
+                          {career.attributes.type}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-4 shrink-0 text-right">
+                      <span className="block font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                        Posted
+                      </span>
+                      <span className="block text-xs text-[#574d43]">
+                        {formatDateTime(career.attributes.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Recent Applications */}
+          <div className="border border-[#241d18]/15 bg-[#fffaf1] shadow-[10px_10px_0_#241d18]">
+            <div className="flex items-center justify-between border-b border-[#241d18]/15 bg-[#f4efe4] px-5 py-4">
+              <div>
+                <p className="font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+                  Recent Applicants
+                </p>
+                <p className="mt-1 text-sm text-[#574d43]">Latest submissions</p>
+              </div>
+              <Link
+                href="/careers/applications"
+                className="flex items-center gap-1 font-mono text-[11px] uppercase tracking-wide text-[#8b4a36] transition-colors hover:text-[#241d18]"
+              >
+                View all
+                <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+
+            <div className="divide-y divide-[#241d18]/10">
+              {applications.length === 0 ? (
+                <div className="flex flex-col items-center justify-center px-5 py-12">
+                  <Inbox className="mb-3 size-10 text-[#6f665d]/50" />
+                  <p className="font-mono text-xs uppercase text-[#6f665d]">
+                    No applications yet
+                  </p>
+                </div>
+              ) : (
+                applications.slice(0, 6).map((app) => (
+                  <div
+                    key={app.id}
+                    className="flex items-start justify-between px-5 py-4 transition-colors hover:bg-[#f4efe4]/60"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-medium text-[#241d18]">
+                        {app.attributes.first_name} {app.attributes.last_name}
+                      </span>
+                      <div className="mt-1 flex items-center gap-3 text-xs text-[#6f665d]">
+                        <span className="font-mono text-[#574d43]">
+                          {app.attributes.email}
+                        </span>
+                        <span
+                          className={`inline-block border px-1.5 py-0.5 font-mono text-[10px] uppercase ${
+                            app.attributes.status === "new"
+                              ? "border-[#e0b84f]/30 bg-[#e0b84f]/8 text-[#8a6d1f]"
+                              : app.attributes.status === "accepted"
+                              ? "border-[#3d7a5c]/30 bg-[#3d7a5c]/8 text-[#3d7a5c]"
+                              : app.attributes.status === "rejected"
+                              ? "border-[#b73823]/30 bg-[#b73823]/8 text-[#7d2418]"
+                              : "border-[#241d18]/10 bg-[#f4efe4] text-[#574d43]"
+                          }`}
+                        >
+                          {app.attributes.status}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="ml-4 shrink-0 text-right">
+                      <span className="block font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                        Applied
+                      </span>
+                      <span className="flex items-center justify-end gap-1 text-xs text-[#574d43]">
+                        <Clock className="size-3" />
+                        {formatDateTime(app.attributes.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

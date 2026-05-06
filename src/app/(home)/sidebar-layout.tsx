@@ -3,48 +3,35 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { PanelLeft } from "lucide-react";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
   pageTitle: string;
 }
 
+const segmentLabels: Record<string, string> = {
+  dashboard: "Dashboard",
+  invoice: "Send Invoice",
+  receipts: "Send Receipt",
+  contacts: "Contacts",
+  "web-reach": "Website Contacts",
+  list: "Contact List",
+  "mailing-history": "Mailing History",
+  careers: "Careers",
+  jobs: "Job Listings",
+  applications: "Applications",
+  portfolio: "Portfolio",
+  users: "Users",
+  invitations: "User Invitations",
+};
+
 export default function SidebarLayout({
   children,
   pageTitle,
 }: SidebarLayoutProps) {
   const pathname = usePathname();
-
-  const segmentLabels: Record<string, string> = {
-    dashboard: "Dashboard",
-    invoice: "Send Invoice",
-    receipts: "Send Receipt",
-    contacts: "Contacts",
-    "web-reach": "Website Contacts",
-    list: "Contact List",
-    "mailing-history": "Mailing History",
-    careers: "Careers",
-    jobs: "Job Listings",
-    applications: "Applications",
-    portfolio: "Portfolio",
-    users: "Users",
-    invitations: "User Invitations",
-  };
 
   const segments = pathname
     .split("/")
@@ -53,11 +40,10 @@ export default function SidebarLayout({
 
   const breadcrumbs = segments.map((segment, index) => {
     const href = `/${segments.slice(0, index + 1).join("/")}`;
-    // Check if this is a dynamic ID segment (MongoDB ObjectId pattern or any ID after "applications")
-    const isIdSegment = 
-      /^[a-f0-9]{24}$/i.test(segment) || 
+    const isIdSegment =
+      /^[a-f0-9]{24}$/i.test(segment) ||
       (index > 0 && segments[index - 1] === "applications" && !segmentLabels[segment]);
-    
+
     const label = isIdSegment
       ? "View"
       : segmentLabels[segment] ||
@@ -81,37 +67,46 @@ export default function SidebarLayout({
   }
 
   return (
-    <SidebarProvider>
+    <div className="flex min-h-screen bg-[#f4efe4]">
       <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                {breadcrumbs.map((crumb, index) => (
-                  <Fragment key={crumb.href || index}>
-                    <BreadcrumbItem>
-                      {crumb.isLast ? (
-                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-                      ) : (
-                        <BreadcrumbLink asChild>
-                          <Link href={crumb.href}>{crumb.label}</Link>
-                        </BreadcrumbLink>
-                      )}
-                    </BreadcrumbItem>
-                    {!crumb.isLast && (
-                      <BreadcrumbSeparator className="hidden md:block" />
-                    )}
-                  </Fragment>
-                ))}
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
+
+      <div className="ml-64 flex flex-1 flex-col">
+        {/* Top header bar */}
+        <header className="flex h-14 shrink-0 items-center gap-4 border-b border-[#241d18]/10 bg-[#fffaf1] px-6">
+          <button
+            className="grid size-8 place-items-center border border-[#241d18]/15 bg-white text-[#574d43] transition-colors hover:border-[#8b4a36] hover:text-[#8b4a36]"
+            title="Toggle sidebar"
+          >
+            <PanelLeft className="size-4" />
+          </button>
+
+          <nav aria-label="Breadcrumb">
+            <ol className="flex items-center gap-2">
+              {breadcrumbs.map((crumb, index) => (
+                <li key={crumb.href || index} className="flex items-center gap-2">
+                  {index > 0 && (
+                    <span className="text-[#9d9389]">/</span>
+                  )}
+                  {crumb.isLast ? (
+                    <span className="font-mono text-[11px] uppercase tracking-wide text-[#8b4a36]">
+                      {crumb.label}
+                    </span>
+                  ) : (
+                    <Link
+                      href={crumb.href}
+                      className="font-mono text-[11px] uppercase tracking-wide text-[#6f665d] transition-colors hover:text-[#241d18]"
+                    >
+                      {crumb.label}
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
         </header>
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
+
+        <main className="flex-1">{children}</main>
+      </div>
+    </div>
   );
 }
