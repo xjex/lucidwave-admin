@@ -8,14 +8,16 @@ export interface MailingHistoryItem {
   id: string;
   attributes: {
     sent_to: string;
-    type: "receipt" | "invoice";
+    type: "receipt" | "invoice" | "payroll";
     timestamp: string;
     files: string[];
     metadata: {
       subject: string;
       amount?: string;
       currency?: string;
-      [key: string]: any;
+      payment_type?: string;
+      employee?: string;
+      [key: string]: unknown;
     };
     sender: {
       id: string;
@@ -42,7 +44,7 @@ export interface MailingHistoryResponse {
 }
 
 export interface MailingHistoryFilters {
-  type?: "receipt" | "invoice";
+  type?: "receipt" | "invoice" | "payroll";
   sent_to?: string;
 }
 

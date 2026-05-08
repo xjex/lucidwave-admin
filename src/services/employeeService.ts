@@ -230,6 +230,19 @@ export async function sendPayroll(
   return response.data.data;
 }
 
+export async function previewPayroll(
+  employeeId: string,
+  payload: PayrollPayload
+): Promise<Blob> {
+  const response: AxiosResponse<Blob> = await axios.post(
+    `${API_URL}/${employeeId}/payroll/preview`,
+    payload,
+    { headers: authHeaders(), responseType: "blob" }
+  );
+
+  return response.data;
+}
+
 export async function getPayrollHistory(
   page: number = 1,
   limit: number = 10,

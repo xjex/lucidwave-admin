@@ -4,8 +4,10 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
-  Banknote,
+  ArrowLeft,
   Check,
+  Eye,
+  FileText,
   Mail,
   Plus,
   Search,
@@ -38,6 +40,8 @@ import {
   Employee,
   EmployeePayload,
   getEmployees,
+  PayrollPayload,
+  previewPayroll,
   sendPayroll,
   updateEmployee,
 } from "@/services/employeeService";
@@ -68,6 +72,14 @@ const formatDateValue = (date: Date | undefined) =>
       )}-${String(date.getDate()).padStart(2, "0")}`
     : "";
 
+const getPayrollFileName = (employeeName: string) =>
+  `payroll-${
+    employeeName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "statement"
+  }.pdf`;
+
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (
     typeof error === "object" &&
@@ -95,6 +107,11 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState("");
   const [employeeDialogOpen, setEmployeeDialogOpen] = useState(false);
   const [payrollDialogOpen, setPayrollDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [payrollPreviewUrl, setPayrollPreviewUrl] = useState<string | null>(
+    null
+  );
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [payrollEmployee, setPayrollEmployee] = useState<Employee | null>(null);
   const [employeeForm, setEmployeeForm] =
@@ -130,6 +147,45 @@ export default function EmployeesPage() {
     };
   }, [payrollForm.additions, payrollForm.hours, payrollForm.rate]);
 
+  const payrollPreviewSummary = useMemo(() => {
+    const selectedClient = payrollEmployee?.assigned_contacts.find(
+      (assignment) => assignment.contact.id === payrollForm.contact_id
+    )?.contact;
+    const royaltyContact = contacts.find(
+      (contact) => contact.id === payrollForm.royalty_contact_id
+    );
+    const period =
+      payrollForm.period_start || payrollForm.period_end
+        ? `${payrollForm.period_start || "Open"} - ${
+            payrollForm.period_end || "Open"
+          }`
+        : "Current payroll period";
+
+    return {
+      recipientName: payrollEmployee?.name || "Employee",
+      recipientEmail: payrollEmployee?.email || "",
+      type:
+        payrollForm.payment_type === "royalty" ? "Royalty" : "Client Payroll",
+      client:
+        payrollForm.payment_type === "royalty"
+          ? royaltyContact
+            ? royaltyContact.company || royaltyContact.name
+            : payrollForm.description || "Royalty company"
+          : selectedClient?.company || selectedClient?.name || "Client",
+      period,
+      fileName: getPayrollFileName(payrollEmployee?.name || "statement"),
+    };
+  }, [
+    contacts,
+    payrollEmployee,
+    payrollForm.contact_id,
+    payrollForm.description,
+    payrollForm.payment_type,
+    payrollForm.period_end,
+    payrollForm.period_start,
+    payrollForm.royalty_contact_id,
+  ]);
+
   const fetchData = useCallback(async (query = "") => {
     try {
       setLoading(true);
@@ -150,6 +206,14 @@ export default function EmployeesPage() {
   useEffect(() => {
     fetchData("");
   }, [fetchData]);
+
+  useEffect(() => {
+    return () => {
+      if (payrollPreviewUrl) {
+        URL.revokeObjectURL(payrollPreviewUrl);
+      }
+    };
+  }, [payrollPreviewUrl]);
 
   const openCreateDialog = () => {
     setEditingEmployee(null);
@@ -175,6 +239,11 @@ export default function EmployeesPage() {
 
   const openPayrollDialog = (employee: Employee) => {
     const firstAssignment = employee.assigned_contacts[0];
+    if (payrollPreviewUrl) {
+      URL.revokeObjectURL(payrollPreviewUrl);
+      setPayrollPreviewUrl(null);
+    }
+    setPreviewDialogOpen(false);
     setPayrollEmployee(employee);
     setPayrollForm({
       payment_type: firstAssignment ? "client" : "royalty",
@@ -189,6 +258,14 @@ export default function EmployeesPage() {
       notes: "",
     });
     setPayrollDialogOpen(true);
+  };
+
+  const closePayrollPreview = () => {
+    setPreviewDialogOpen(false);
+    if (payrollPreviewUrl) {
+      URL.revokeObjectURL(payrollPreviewUrl);
+      setPayrollPreviewUrl(null);
+    }
   };
 
   const toggleContact = (contactId: string) => {
@@ -268,41 +345,71 @@ export default function EmployeesPage() {
     }
   };
 
-  const handlePayrollSubmit = async (event: FormEvent) => {
+  const buildPayrollPayload = (): PayrollPayload => {
+    const royaltyContact = contacts.find(
+      (contact) => contact.id === payrollForm.royalty_contact_id
+    );
+
+    return {
+      payment_type: payrollForm.payment_type,
+      contact_id:
+        payrollForm.payment_type === "client"
+          ? payrollForm.contact_id || undefined
+          : undefined,
+      hours: Number(payrollForm.hours),
+      rate: Number(payrollForm.rate),
+      additions: payrollForm.additions
+        .map((addition) => ({
+          label: addition.label.trim(),
+          amount: Number(addition.amount || 0),
+        }))
+        .filter((addition) => addition.label && addition.amount > 0),
+      period_start: payrollForm.period_start || undefined,
+      period_end: payrollForm.period_end || undefined,
+      description:
+        payrollForm.payment_type === "royalty"
+          ? royaltyContact
+            ? royaltyContact.company || royaltyContact.name
+            : undefined
+          : payrollForm.description || undefined,
+      notes: payrollForm.notes || undefined,
+    };
+  };
+
+  const handlePayrollPreview = async (event: FormEvent) => {
     event.preventDefault();
+    if (!payrollEmployee) return;
+
+    try {
+      setPreviewLoading(true);
+      setError(null);
+      setMessage(null);
+      const pdfBlob = await previewPayroll(
+        payrollEmployee.id,
+        buildPayrollPayload()
+      );
+      const nextUrl = URL.createObjectURL(pdfBlob);
+      if (payrollPreviewUrl) {
+        URL.revokeObjectURL(payrollPreviewUrl);
+      }
+      setPayrollPreviewUrl(nextUrl);
+      setPreviewDialogOpen(true);
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to generate payroll preview"));
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const sendPayrollFromPreview = async () => {
     if (!payrollEmployee) return;
 
     try {
       setSaving(true);
       setError(null);
       setMessage(null);
-      const royaltyContact = contacts.find(
-        (contact) => contact.id === payrollForm.royalty_contact_id
-      );
-      await sendPayroll(payrollEmployee.id, {
-        payment_type: payrollForm.payment_type,
-        contact_id:
-          payrollForm.payment_type === "client"
-            ? payrollForm.contact_id || undefined
-            : undefined,
-        hours: Number(payrollForm.hours),
-        rate: Number(payrollForm.rate),
-        additions: payrollForm.additions
-          .map((addition) => ({
-            label: addition.label.trim(),
-            amount: Number(addition.amount || 0),
-          }))
-          .filter((addition) => addition.label && addition.amount > 0),
-        period_start: payrollForm.period_start || undefined,
-        period_end: payrollForm.period_end || undefined,
-        description:
-          payrollForm.payment_type === "royalty"
-            ? royaltyContact
-              ? royaltyContact.company || royaltyContact.name
-              : undefined
-            : payrollForm.description || undefined,
-        notes: payrollForm.notes || undefined,
-      });
+      await sendPayroll(payrollEmployee.id, buildPayrollPayload());
+      closePayrollPreview();
       setPayrollDialogOpen(false);
       setMessage(`Payroll sent to ${payrollEmployee.email}`);
     } catch (err) {
@@ -653,7 +760,7 @@ export default function EmployeesPage() {
               Send a payroll statement to {payrollEmployee?.email}.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handlePayrollSubmit} className="space-y-5">
+          <form onSubmit={handlePayrollPreview} className="space-y-5">
             <div className="space-y-2">
               <Label>Payment Type</Label>
               <Select
@@ -970,15 +1077,136 @@ export default function EmployeesPage() {
             <Button
               disabled={
                 saving ||
+                previewLoading ||
                 (payrollForm.payment_type === "client" &&
                   !payrollEmployee?.assigned_contacts.length)
               }
               className="h-11 w-full rounded-none bg-[#241d18] font-mono text-[11px] uppercase tracking-wide text-[#fffaf1] shadow-none hover:bg-[#8b4a36]"
             >
-              <Banknote className="size-4" />
-              {saving ? "Sending" : "Send Payroll Email"}
+              <Eye className="size-4" />
+              {previewLoading ? "Generating Preview" : "Preview Payroll PDF"}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={previewDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            closePayrollPreview();
+          } else {
+            setPreviewDialogOpen(true);
+          }
+        }}
+      >
+        <DialogContent className="flex h-[96vh] w-[98vw] !max-w-none flex-col rounded-none border-[#241d18]/20 bg-[#fffaf1] p-0 shadow-[14px_14px_0_#241d18]">
+          <div className="border-b border-[#241d18]/15 bg-[#f4efe4] px-6 py-5">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 font-serif text-xl text-[#241d18]">
+                <FileText className="size-5 text-[#8b4a36]" />
+                Review & Confirm Payroll
+              </DialogTitle>
+              <DialogDescription>
+                Validate the attached statement before sending the email.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div className="mb-5 grid gap-4 border border-[#241d18]/10 bg-[#f4efe4] p-4 md:grid-cols-4">
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                  Recipient
+                </p>
+                <p className="text-sm font-medium text-[#241d18]">
+                  {payrollPreviewSummary.recipientName}
+                </p>
+                <p className="font-mono text-sm text-[#574d43]">
+                  {payrollPreviewSummary.recipientEmail}
+                </p>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                  Details
+                </p>
+                <p className="text-sm text-[#241d18]">
+                  {payrollPreviewSummary.type}
+                </p>
+                <p className="text-sm text-[#574d43]">
+                  {payrollPreviewSummary.client}
+                </p>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                  Period
+                </p>
+                <p className="text-sm text-[#241d18]">
+                  {payrollPreviewSummary.period}
+                </p>
+                <p className="text-sm text-[#574d43]">
+                  {money.format(payrollTotals.grossPay)}
+                </p>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                  Files (1)
+                </p>
+                <p className="mt-1 text-xs text-[#574d43]">
+                  {payrollPreviewSummary.fileName}
+                </p>
+              </div>
+            </div>
+
+            <div className="border border-[#241d18]/15 bg-white p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+                  PDF Preview
+                </span>
+                <span className="text-xs text-[#6f665d]">
+                  {payrollPreviewSummary.fileName}
+                </span>
+              </div>
+              {payrollPreviewUrl ? (
+                <div className="overflow-hidden border border-[#241d18]/10">
+                  <iframe
+                    title={`PDF Preview: ${payrollPreviewSummary.fileName}`}
+                    src={payrollPreviewUrl}
+                    className="w-full bg-white"
+                    style={{ height: "70vh" }}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center border border-[#241d18]/10 bg-[#f4efe4] p-12">
+                  <FileText className="mb-3 size-12 text-[#6f665d]/50" />
+                  <p className="font-mono text-xs uppercase text-[#6f665d]">
+                    No PDF file selected for preview
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 border-t border-[#241d18]/15 px-6 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closePayrollPreview}
+              className="h-11 rounded-none border-[#241d18]/20 bg-white font-mono text-[11px] uppercase tracking-wide text-[#574d43] shadow-none hover:bg-[#f4efe4]"
+            >
+              <ArrowLeft className="mr-2 size-4" />
+              Back
+            </Button>
+            <Button
+              type="button"
+              disabled={saving || !payrollPreviewUrl}
+              onClick={sendPayrollFromPreview}
+              className="h-11 flex-1 rounded-none border border-[#241d18] bg-[#241d18] font-mono text-[11px] uppercase tracking-wide text-[#fffaf1] shadow-none transition-transform hover:-translate-y-0.5 hover:bg-[#8b4a36] disabled:translate-y-0"
+            >
+              <Send className="size-4" />
+              {saving ? "Sending..." : "Confirm & Send Payroll"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

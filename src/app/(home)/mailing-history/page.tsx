@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,6 @@ import {
   Calendar,
   User,
   Search,
-  RefreshCw,
   Download,
   Eye,
   Mail,
@@ -51,11 +50,23 @@ export default function MailingHistoryPage() {
   const [viewingFileIndex, setViewingFileIndex] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  useEffect(() => {
-    fetchMailingHistory();
-  }, [filters]);
+  const getErrorMessage = (err: unknown, fallback: string) => {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "response" in err &&
+      typeof err.response === "object" &&
+      err.response !== null &&
+      "data" in err.response
+    ) {
+      const data = err.response.data as { message?: string; error?: string };
+      return data.message || data.error || fallback;
+    }
 
-  const fetchMailingHistory = async (page: number = 1) => {
+    return err instanceof Error ? err.message : fallback;
+  };
+
+  const fetchMailingHistory = useCallback(async (page: number = 1) => {
     try {
       setLoading(true);
       setError(null);
@@ -66,25 +77,32 @@ export default function MailingHistoryPage() {
       const response = await getMailingHistory(page, 10, apiFilters);
       setMailingHistory(response.data);
       setMeta(response.meta);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to load mailing history");
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to load mailing history"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, recipientFilter]);
+
+  useEffect(() => {
+    fetchMailingHistory();
+  }, [fetchMailingHistory]);
 
   const handleTypeFilterChange = (type: string) => {
     setFilters((prev) => ({
       ...prev,
-      type: type === "all" ? undefined : (type as "receipt" | "invoice"),
+      type:
+        type === "all"
+          ? undefined
+          : (type as "receipt" | "invoice" | "payroll"),
     }));
   };
 
   const handleDownload = async (item: MailingHistoryItem) => {
     try {
       await downloadMailingHistory(item.id);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to download");
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to download"));
     }
   };
 
@@ -114,15 +132,18 @@ export default function MailingHistoryPage() {
 
   const typePill = (type: string) => {
     const isInvoice = type === "invoice";
+    const isPayroll = type === "payroll";
     return (
       <span
         className={`inline-flex items-center gap-1.5 border px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide ${
           isInvoice
             ? "border-[#8b4a36]/30 bg-[#8b4a36]/8 text-[#8b4a36]"
+            : isPayroll
+              ? "border-[#241d18]/20 bg-white text-[#574d43]"
             : "border-[#3d7a5c]/30 bg-[#3d7a5c]/8 text-[#3d7a5c]"
         }`}
       >
-        {isInvoice ? (
+        {isInvoice || isPayroll ? (
           <FileText className="size-3.5" />
         ) : (
           <Receipt className="size-3.5" />
@@ -145,8 +166,9 @@ export default function MailingHistoryPage() {
             Sent Documents
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-[#6f665d]">
-            History of all invoices and receipts sent via email. Preview inline
-            or download the originals.
+            History of invoices, receipts, and payroll statements sent via
+            email. Preview inline or download the originals when files are
+            available.
           </p>
         </div>
       </div>
@@ -159,7 +181,7 @@ export default function MailingHistoryPage() {
               Document Type
             </Label>
             <div className="flex gap-2">
-              {["all", "invoice", "receipt"].map((t) => (
+              {["all", "invoice", "receipt", "payroll"].map((t) => (
                 <button
                   key={t}
                   onClick={() => handleTypeFilterChange(t)}
@@ -298,6 +320,7 @@ export default function MailingHistoryPage() {
                 <div className="flex items-center justify-end gap-1">
                   <button
                     onClick={() => handleView(item)}
+                    disabled={!item.attributes.files.length}
                     className="grid size-8 place-items-center border border-[#241d18]/15 bg-white text-[#574d43] transition-colors hover:border-[#8b4a36] hover:text-[#8b4a36]"
                     title="View"
                   >
@@ -305,6 +328,7 @@ export default function MailingHistoryPage() {
                   </button>
                   <button
                     onClick={() => handleDownload(item)}
+                    disabled={!item.attributes.files.length}
                     className="grid size-8 place-items-center border border-[#241d18]/15 bg-white text-[#574d43] transition-colors hover:border-[#8b4a36] hover:text-[#8b4a36]"
                     title="Download"
                   >
