@@ -88,6 +88,7 @@ export interface PayrollRecord {
   period_end?: string;
   description?: string;
   notes?: string;
+  pdf_url?: string;
   email_status: "sent" | "failed";
   email_error?: string;
   sent_by: {
@@ -262,4 +263,20 @@ export async function getPayrollHistory(
   );
 
   return response.data;
+}
+
+export async function downloadPayrollRecord(id: string): Promise<void> {
+  const response: AxiosResponse<Blob> = await axios.get(
+    `${API_URL}/payroll/history/${id}/download`,
+    { headers: authHeaders(), responseType: "blob" }
+  );
+
+  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", `payroll-${id}.pdf`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 }

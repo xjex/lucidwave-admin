@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AlertTriangle, Banknote, Calendar, Mail, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  Banknote,
+  Calendar,
+  Download,
+  Mail,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Employee,
+  downloadPayrollRecord,
   getEmployees,
   getPayrollHistory,
   PayrollRecord,
@@ -47,6 +55,7 @@ export default function PayrollHistoryPage() {
   const [meta, setMeta] = useState<PayrollHistoryResponse["meta"] | null>(null);
   const [employeeFilter, setEmployeeFilter] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchHistory = useCallback(async (page = 1, employeeId = "all") => {
@@ -80,6 +89,18 @@ export default function PayrollHistoryPage() {
 
     loadInitialData();
   }, [fetchHistory]);
+
+  const handleDownload = async (record: PayrollRecord) => {
+    try {
+      setDownloadingId(record.id);
+      setError(null);
+      await downloadPayrollRecord(record.id);
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to download payroll PDF"));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f4efe4] text-[#241d18]">
@@ -135,7 +156,7 @@ export default function PayrollHistoryPage() {
         )}
 
         <div className="border border-[#241d18]/15 bg-[#fffaf1] shadow-[10px_10px_0_#241d18]">
-          <div className="grid grid-cols-[1.1fr_1fr_100px_110px_130px_120px_1fr] items-center border-b border-[#241d18]/15 bg-[#f4efe4] px-5 py-3 font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
+          <div className="grid grid-cols-[1.1fr_1fr_100px_110px_130px_120px_1fr_110px] items-center border-b border-[#241d18]/15 bg-[#f4efe4] px-5 py-3 font-mono text-[11px] uppercase tracking-wide text-[#6f665d]">
             <span>Employee</span>
             <span>Client</span>
             <span>Hours</span>
@@ -143,6 +164,7 @@ export default function PayrollHistoryPage() {
             <span>Gross Pay</span>
             <span>Status</span>
             <span>Sent At</span>
+            <span>File</span>
           </div>
 
           {loading ? (
@@ -163,7 +185,7 @@ export default function PayrollHistoryPage() {
             records.map((record) => (
               <div
                 key={record.id}
-                className="grid grid-cols-[1.1fr_1fr_100px_110px_130px_120px_1fr] items-center border-b border-[#241d18]/10 px-5 py-4 transition-colors hover:bg-[#f4efe4]/60"
+                className="grid grid-cols-[1.1fr_1fr_100px_110px_130px_120px_1fr_110px] items-center border-b border-[#241d18]/10 px-5 py-4 transition-colors hover:bg-[#f4efe4]/60"
               >
                 <div>
                   <p className="font-medium">{record.employee.name}</p>
@@ -229,6 +251,16 @@ export default function PayrollHistoryPage() {
                   <Calendar className="size-4 text-[#8b4a36]" />
                   {formatDateTime(record.sent_at)}
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!record.pdf_url || downloadingId === record.id}
+                  onClick={() => handleDownload(record)}
+                  className="w-fit rounded-none border-[#241d18]/20 bg-white font-mono text-[11px] uppercase text-[#574d43] shadow-none hover:border-[#8b4a36]"
+                >
+                  <Download className="size-3.5" />
+                  {downloadingId === record.id ? "Saving" : "PDF"}
+                </Button>
               </div>
             ))
           )}

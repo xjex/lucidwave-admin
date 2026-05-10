@@ -8,12 +8,14 @@ import {
   ArrowLeft,
   Banknote,
   Calendar,
+  Download,
   Mail,
   UserRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Employee,
+  downloadPayrollRecord,
   getEmployee,
   getPayrollHistory,
   PayrollHistoryResponse,
@@ -50,6 +52,7 @@ export default function EmployeeDetailPage() {
   const [meta, setMeta] = useState<PayrollHistoryResponse["meta"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchHistory = useCallback(
@@ -96,6 +99,18 @@ export default function EmployeeDetailPage() {
     }),
     { hours: 0, gross: 0 }
   );
+
+  const handleDownload = async (record: PayrollRecord) => {
+    try {
+      setDownloadingId(record.id);
+      setError(null);
+      await downloadPayrollRecord(record.id);
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to download payroll PDF"));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -244,7 +259,7 @@ export default function EmployeeDetailPage() {
                 {records.map((record) => (
                   <div
                     key={record.id}
-                    className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_120px_140px]"
+                    className="grid gap-4 px-5 py-4 md:grid-cols-[1fr_120px_140px_90px]"
                   >
                     <div>
                       <p className="font-medium">
@@ -287,6 +302,18 @@ export default function EmployeeDetailPage() {
                       >
                         {record.email_status}
                       </span>
+                    </div>
+                    <div className="md:text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!record.pdf_url || downloadingId === record.id}
+                        onClick={() => handleDownload(record)}
+                        className="rounded-none border-[#241d18]/20 bg-white font-mono text-[11px] uppercase text-[#574d43] shadow-none hover:border-[#8b4a36]"
+                      >
+                        <Download className="size-3.5" />
+                        {downloadingId === record.id ? "Saving" : "PDF"}
+                      </Button>
                     </div>
                   </div>
                 ))}
