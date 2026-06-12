@@ -10,6 +10,7 @@ import {
   Handshake,
   History,
   Briefcase,
+  Radar,
   Folder,
   UserCog,
   IdCard,
@@ -72,6 +73,12 @@ const navItems: NavItem[] = [
       { title: "Job Listings", url: "/careers/jobs" },
       { title: "Applications", url: "/careers/applications" },
     ],
+  },
+  {
+    title: "Job Scrapes",
+    url: "/scrapes",
+    icon: Radar,
+    items: [{ title: "OnlineJobs.ph", url: "/scrapes" }],
   },
   { title: "Portfolio", url: "/portfolio", icon: Folder },
   {
