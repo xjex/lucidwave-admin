@@ -180,7 +180,9 @@ export default function UsersPage() {
     firstName: "",
     lastName: "",
     role: "user",
+    password: "",
   });
+  const [editPasswordConfirm, setEditPasswordConfirm] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -222,9 +224,29 @@ export default function UsersPage() {
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+
+    const nextPassword = editForm.password?.trim() || "";
+    if (nextPassword && nextPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    if (nextPassword && nextPassword !== editPasswordConfirm) {
+      toast.error("Password confirmation does not match");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await updateUser(selectedUser.id, editForm);
+      const payload: UpdateUserRequest = {
+        username: editForm.username,
+        email: editForm.email,
+        firstName: editForm.firstName,
+        lastName: editForm.lastName,
+        role: editForm.role,
+        ...(nextPassword ? { password: nextPassword } : {}),
+      };
+
+      await updateUser(selectedUser.id, payload);
       toast.success("User updated successfully!");
       setEditModalOpen(false);
       setSelectedUser(null);
@@ -234,7 +256,9 @@ export default function UsersPage() {
         firstName: "",
         lastName: "",
         role: "user",
+        password: "",
       });
+      setEditPasswordConfirm("");
       fetchUsers();
     } catch (err) {
       toast.error(getErrorMessage(err) || "Failed to update user");
@@ -270,7 +294,9 @@ export default function UsersPage() {
       firstName: user.firstName || "",
       lastName: user.lastName || "",
       role: user.role,
+      password: "",
     });
+    setEditPasswordConfirm("");
     setEditModalOpen(true);
   };
 
@@ -510,7 +536,7 @@ export default function UsersPage() {
 
       {/* Create Invitation Dialog */}
       <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-        <DialogContent className="max-w-md rounded-none border-[#241d18]/15 bg-[#fffaf1] p-0 shadow-[8px_8px_0px_0px_rgba(36,29,24,0.06)]">
+        <DialogContent className="max-w-lg rounded-none border-[#241d18]/15 bg-[#fffaf1] p-0 shadow-[8px_8px_0px_0px_rgba(36,29,24,0.06)]">
           <DialogHeader className="border-b border-[#241d18]/10 px-6 py-5">
             <DialogTitle className="text-lg font-bold text-[#241d18]">
               Send Invitation
@@ -602,7 +628,7 @@ export default function UsersPage() {
               Edit Member
             </DialogTitle>
             <DialogDescription className="text-sm text-[#6f665d]">
-              Update account details for{" "}
+              Update account details, role, or password for{" "}
               <strong className="text-[#241d18]">
                 {selectedUser?.username}
               </strong>
@@ -699,6 +725,26 @@ export default function UsersPage() {
                 placeholder="Leave empty to keep current"
                 className="rounded-none border-[#241d18]/15 bg-[#f4efe4] text-[#241d18] placeholder:text-[#9d9389] focus:border-[#8b4a36] focus:ring-[#8b4a36]/20"
               />
+            </div>
+            <div className="space-y-2">
+              <Label
+                htmlFor="edit-password-confirm"
+                className="font-mono text-[10px] uppercase tracking-wide text-[#6f665d]"
+              >
+                Confirm New Password
+              </Label>
+              <Input
+                id="edit-password-confirm"
+                type="password"
+                value={editPasswordConfirm}
+                onChange={(e) => setEditPasswordConfirm(e.target.value)}
+                placeholder="Repeat new password"
+                disabled={!editForm.password}
+                className="rounded-none border-[#241d18]/15 bg-[#f4efe4] text-[#241d18] placeholder:text-[#9d9389] focus:border-[#8b4a36] focus:ring-[#8b4a36]/20 disabled:opacity-50"
+              />
+              <p className="text-xs leading-5 text-[#6f665d]">
+                Leave both password fields blank to keep the current password.
+              </p>
             </div>
             <div className="space-y-2">
               <Label

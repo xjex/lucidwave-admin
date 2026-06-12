@@ -1,6 +1,6 @@
 import { pdf } from '@react-pdf/renderer';
 import { InvoicePDF } from '@/components/InvoicePDF';
-import { Invoice, InvoiceFormData } from '@/types/invoice';
+import { Invoice, InvoiceFormData, InvoicePdfSettings } from '@/types/invoice';
 
 export function convertFormDataToInvoice(formData: InvoiceFormData): Invoice {
   const items = formData.items.map(item => ({
@@ -15,6 +15,7 @@ export function convertFormDataToInvoice(formData: InvoiceFormData): Invoice {
   return {
     id: `inv-${Date.now()}`,
     invoiceNumber: formData.invoiceNumber,
+    projectName: formData.projectName,
     date: new Date(formData.date),
     dueDate: new Date(formData.dueDate),
     from: {
@@ -39,9 +40,14 @@ export function convertFormDataToInvoice(formData: InvoiceFormData): Invoice {
   };
 }
 
-export async function generateInvoicePDF(invoice: Invoice): Promise<Blob> {
+export async function generateInvoicePDF(
+  invoice: Invoice,
+  settings?: InvoicePdfSettings | null
+): Promise<Blob> {
   try {
-    const blob = await pdf(<InvoicePDF invoice={invoice} />).toBlob();
+    const blob = await pdf(
+      <InvoicePDF invoice={invoice} settings={settings} />
+    ).toBlob();
     return blob;
   } catch (error) {
     console.error('Error generating PDF:', error);
@@ -49,9 +55,12 @@ export async function generateInvoicePDF(invoice: Invoice): Promise<Blob> {
   }
 }
 
-export async function downloadInvoicePDF(invoice: Invoice) {
+export async function downloadInvoicePDF(
+  invoice: Invoice,
+  settings?: InvoicePdfSettings | null
+) {
   try {
-    const blob = await generateInvoicePDF(invoice);
+    const blob = await generateInvoicePDF(invoice, settings);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -66,12 +75,18 @@ export async function downloadInvoicePDF(invoice: Invoice) {
   }
 }
 
-export async function generateInvoicePDFFromForm(formData: InvoiceFormData): Promise<Blob> {
+export async function generateInvoicePDFFromForm(
+  formData: InvoiceFormData,
+  settings?: InvoicePdfSettings | null
+): Promise<Blob> {
   const invoice = convertFormDataToInvoice(formData);
-  return generateInvoicePDF(invoice);
+  return generateInvoicePDF(invoice, settings);
 }
 
-export async function downloadInvoicePDFFromForm(formData: InvoiceFormData) {
+export async function downloadInvoicePDFFromForm(
+  formData: InvoiceFormData,
+  settings?: InvoicePdfSettings | null
+) {
   const invoice = convertFormDataToInvoice(formData);
-  return downloadInvoicePDF(invoice);
+  return downloadInvoicePDF(invoice, settings);
 }

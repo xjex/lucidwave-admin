@@ -16,6 +16,7 @@ export interface InvoiceParty {
 export interface Invoice {
   id: string;
   invoiceNumber: string;
+  projectName?: string;
   date: Date;
   dueDate: Date;
   from: InvoiceParty;
@@ -29,8 +30,41 @@ export interface Invoice {
   notes?: string;
 }
 
+export interface InvoicePaymentLink {
+  label: string;
+  url: string;
+}
+
+export interface InvoiceTemplateBlock {
+  id: string;
+  type: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  visible: boolean;
+}
+
+export interface InvoiceTemplateLayout {
+  blocks: InvoiceTemplateBlock[];
+}
+
+export interface InvoicePdfSettings {
+  id?: string;
+  name?: string;
+  company_logo_url?: string;
+  company_logo_view_url?: string;
+  payment_tags?: string[];
+  direct_payment_links?: InvoicePaymentLink[];
+  banking_details?: string;
+  qr_links?: InvoicePaymentLink[];
+  template_layout?: InvoiceTemplateLayout;
+}
+
 export interface InvoiceFormData {
   invoiceNumber: string;
+  projectName: string;
   date: string;
   dueDate: string;
   fromName: string;

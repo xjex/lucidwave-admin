@@ -1,361 +1,1059 @@
 import React from "react";
+import { Document, Image, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Font,
-  Image,
-} from "@react-pdf/renderer";
-import { Invoice } from "@/types/invoice";
+  Invoice,
+  InvoicePdfSettings,
+  InvoiceTemplateBlock,
+} from "@/types/invoice";
 import { format } from "date-fns";
 import { formatCurrencyForPDF } from "@/lib/currency-utils";
 
-// Register fonts (optional - you can add custom fonts later)
-// Font.register({
-//   family: 'Inter',
-//   fonts: [
-//     { src: '/fonts/Inter-Regular.ttf' },
-//     { src: '/fonts/Inter-Bold.ttf', fontWeight: 'bold' },
-//   ],
-// });
+const ink = "#241d18";
+const rust = "#d95c3f";
+const clay = "#8b4a36";
+const paper = "#fffaf1";
+const linen = "#f4efe4";
+const muted = "#6f665d";
+const designWidth = 794;
+const designHeight = 1123;
+const pageWidth = 595.28;
+const pageHeight = 841.89;
+const scaleX = pageWidth / designWidth;
+const scaleY = pageHeight / designHeight;
 
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontSize: 11,
+    backgroundColor: paper,
+    color: ink,
     fontFamily: "Helvetica",
+    fontSize: 10,
+    padding: 34,
   },
-  header: {
-    marginBottom: 30,
-    borderBottom: 2,
-    borderBottomColor: "#2563eb",
-    paddingBottom: 20,
-  },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 15,
-  },
-  clientInfo: {
-    flex: 1,
-  },
-  invoiceTitle: {
-    alignItems: "flex-end",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#2563eb",
-    marginBottom: 5,
-  },
-  invoiceNumber: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#2563eb",
-  },
-  bottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  clientDetails: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 2,
-  },
-  clientEmail: {
-    fontSize: 12,
-    color: "#6b7280",
-  },
-  dateInfo: {
-    alignItems: "flex-end",
-  },
-  dateLabel: {
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  dueDateLabel: {
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  invoiceDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  invoiceInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  infoBlock: {
-    flex: 1,
-    marginHorizontal: 10,
-  },
-  infoTitle: {
-    fontSize: 12,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#374151",
-  },
-  infoText: {
-    marginBottom: 3,
-    lineHeight: 1.4,
-  },
-  table: {
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#f3f4f6",
-    padding: 8,
-    borderBottom: 1,
-    borderBottomColor: "#d1d5db",
-  },
-  tableRow: {
-    flexDirection: "row",
-    padding: 8,
-    borderBottom: 1,
-    borderBottomColor: "#e5e7eb",
-  },
-  tableCell: {
-    flex: 1,
-    paddingHorizontal: 4,
-  },
-  tableCellDescription: {
-    flex: 2,
-  },
-  tableCellQuantity: {
-    flex: 1,
-    textAlign: "center",
-  },
-  tableCellRate: {
-    flex: 1,
-    textAlign: "right",
-  },
-  tableCellAmount: {
-    flex: 1,
-    textAlign: "right",
-    fontWeight: "bold",
-  },
-  totals: {
-    marginTop: 20,
-    marginLeft: "auto",
-    width: "40%",
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  subtotalRow: {
-    borderTop: 1,
-    borderTopColor: "#d1d5db",
-    marginTop: 8,
-    paddingTop: 8,
-  },
-  totalRowFinal: {
-    borderTop: 2,
-    borderTopColor: "#2563eb",
-    marginTop: 4,
-    paddingTop: 8,
-    fontSize: 14,
-    fontWeight: "bold",
-    backgroundColor: "#f0f9ff",
-  },
-  notes: {
-    marginTop: 30,
-    padding: 15,
-    backgroundColor: "#f9fafb",
-    borderLeft: 4,
-    borderLeftColor: "#2563eb",
-  },
-  notesTitle: {
-    fontSize: 12,
-    fontWeight: "bold",
-    marginBottom: 8,
-    color: "#374151",
-  },
-  footer: {
-    position: "absolute",
-    bottom: 40,
-    left: 40,
-    right: 40,
-    textAlign: "center",
-    fontSize: 9,
-    color: "#6b7280",
-    borderTop: 1,
-    borderTopColor: "#e5e7eb",
-    paddingTop: 10,
-  },
-  backgroundContainer: {
+  topBand: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    zIndex: -1,
+    height: 0,
+    backgroundColor: paper,
   },
-  backgroundImage: {
-    width: 595, // A4 width in points (210mm at 72 DPI)
-    height: 742, // A4 height in points (297mm at 72 DPI)
-    opacity: 0.1, // Subtle watermark
+  accent: {
+    position: "absolute",
+    top: 92,
+    right: 60,
+    width: 156,
+    height: 12,
+    backgroundColor: rust,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 38,
+    paddingTop: 4,
+  },
+  brand: {
+    color: ink,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  logoWrap: {
+    width: 58,
+    height: 58,
+    padding: 0,
+  },
+  logo: {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+  },
+  brandText: {
+    flexDirection: "column",
+  },
+  brandKicker: {
+    color: ink,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 16,
+    marginBottom: 4,
+  },
+  companyLine: {
+    color: ink,
+    fontSize: 9,
+    lineHeight: 1.25,
+  },
+  title: {
+    color: "#3e3a36",
+    fontSize: 36,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 5,
+  },
+  invoiceTitleBlock: {
+    alignItems: "flex-end",
+    marginTop: 30,
+  },
+  invoiceMeta: {
+    width: 210,
+    marginTop: 36,
+    padding: 0,
+  },
+  invoiceMetaLabel: {
+    color: clay,
+    fontSize: 8,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 5,
+  },
+  invoiceNumber: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    marginBottom: 8,
+  },
+  metaRows: {
+    gap: 5,
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  metaKey: {
+    color: ink,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 11,
+    textTransform: "uppercase",
+  },
+  metaValue: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+  },
+  partyGrid: {
+    flexDirection: "row",
+    gap: 14,
+    marginBottom: 28,
+  },
+  partyBox: {
+    flex: 1,
+    border: `1 solid ${ink}`,
+    backgroundColor: linen,
+    padding: 14,
+    minHeight: 116,
+  },
+  partyLabel: {
+    color: clay,
+    fontSize: 8,
+    letterSpacing: 1.3,
+    textTransform: "uppercase",
+    marginBottom: 10,
+  },
+  partyName: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 14,
+    marginBottom: 6,
+  },
+  partyText: {
+    color: "#574d43",
+    lineHeight: 1.45,
+    marginBottom: 3,
+  },
+  table: {
+    border: `1 solid ${ink}`,
+    marginBottom: 22,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: ink,
+    color: paper,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  tableRow: {
+    flexDirection: "row",
+    minHeight: 38,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderTop: `1 solid rgba(36, 29, 24, 0.16)`,
+  },
+  altRow: {
+    backgroundColor: linen,
+  },
+  description: {
+    flex: 3,
+    paddingRight: 10,
+  },
+  qty: {
+    flex: 0.7,
+    textAlign: "right",
+  },
+  rate: {
+    flex: 1,
+    textAlign: "right",
+  },
+  amount: {
+    flex: 1,
+    textAlign: "right",
+    fontFamily: "Helvetica-Bold",
+  },
+  headerText: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  notes: {
+    width: "52%",
+    borderLeft: `4 solid ${rust}`,
+    paddingLeft: 11,
+    paddingTop: 2,
+  },
+  notesTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 7,
+  },
+  notesText: {
+    color: "#574d43",
+    lineHeight: 1.45,
+  },
+  totals: {
+    width: 210,
+    border: `1 solid ${ink}`,
+  },
+  totalLine: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    paddingHorizontal: 11,
+    borderBottom: `1 solid rgba(36, 29, 24, 0.16)`,
+  },
+  grandTotal: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 13,
+    paddingHorizontal: 11,
+    backgroundColor: rust,
+    color: paper,
+  },
+  grandTotalLabel: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  grandTotalValue: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 17,
+  },
+  footer: {
+    position: "absolute",
+    left: 34,
+    right: 34,
+    bottom: 25,
+    borderTop: `1 solid rgba(36, 29, 24, 0.18)`,
+    paddingTop: 9,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    color: muted,
+    fontSize: 8,
+  },
+  paymentSection: {
+    marginTop: 20,
+    paddingTop: 8,
+  },
+  paymentTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12,
+    textTransform: "uppercase",
+    color: ink,
+    marginBottom: 9,
+  },
+  paymentTags: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 9,
+  },
+  paymentTag: {
+    border: `1 solid rgba(36, 29, 24, 0.24)`,
+    paddingVertical: 4,
+    paddingHorizontal: 7,
+    fontSize: 8,
+    textTransform: "uppercase",
+  },
+  paymentGrid: {
+    flexDirection: "row",
+    gap: 24,
+  },
+  paymentColumn: {
+    flex: 1,
+  },
+  paymentLabel: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    textTransform: "uppercase",
+    marginBottom: 7,
+  },
+  paymentText: {
+    color: ink,
+    fontSize: 9,
+    lineHeight: 1.25,
+    marginBottom: 4,
+  },
+  paymentStrong: {
+    fontFamily: "Helvetica-Bold",
+  },
+  templatePaymentText: {
+    color: ink,
+    fontSize: 8,
+    lineHeight: 1.12,
+    marginBottom: 2,
+  },
+  templatePaymentLink: {
+    marginTop: 4,
+  },
+  templatePaymentUrl: {
+    color: "#083f63",
+  },
+  qrImage: {
+    width: 92,
+    height: 92,
+    objectFit: "contain",
+    marginTop: 5,
+  },
+  paymentRule: {
+    marginTop: 12,
+    borderBottom: `2 solid ${ink}`,
+  },
+  templateBlock: {
+    position: "absolute",
+  },
+  templateCompany: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 9,
+  },
+  templateLogoWrap: {
+    width: 44,
+    height: 44,
+  },
+  templateCompanyName: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 16,
+    marginBottom: 3,
+  },
+  templateSmallText: {
+    fontSize: 9,
+    lineHeight: 1.22,
+    color: ink,
+  },
+  templateTitleBlock: {
+    alignItems: "flex-end",
+  },
+  templateTitle: {
+    color: "#3e3a36",
+    fontFamily: "Helvetica-Bold",
+    fontSize: 25,
+    letterSpacing: 4,
+    lineHeight: 1,
+  },
+  templateTitleBar: {
+    width: 120,
+    height: 9,
+    backgroundColor: "#f59a23",
+    marginTop: 4,
+  },
+  templateSectionTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 12,
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+  templateProjectLine: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  templateItemsHeader: {
+    flexDirection: "row",
+    backgroundColor: "#083f63",
+    color: "#ffffff",
+    paddingVertical: 10,
+    paddingHorizontal: 11,
+  },
+  templateItemsRow: {
+    flexDirection: "row",
+    paddingVertical: 14,
+    paddingHorizontal: 11,
+    borderBottom: `4 solid #3f3b37`,
+  },
+  templateTotals: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#f59a23",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  templateThankYou: {
+    textAlign: "center",
+    fontFamily: "Helvetica-Bold",
+    fontSize: 11,
+    lineHeight: 1.2,
+  },
+  templateQrImage: {
+    width: 90,
+    height: 90,
+    objectFit: "contain",
   },
 });
 
 interface InvoicePDFProps {
   invoice: Invoice;
+  settings?: InvoicePdfSettings | null;
 }
 
-export function InvoicePDF({ invoice }: InvoicePDFProps) {
-  const formatDate = (date: Date) => {
-    return format(date, "MMMM dd, yyyy");
+const formatDate = (date: Date) => format(date, "MMM dd, yyyy");
+
+const addressLines = (value: string) =>
+  value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && line !== "-");
+
+const isImageUrl = (value: string) =>
+  /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(value);
+
+const clampNumber = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
+const getTemplateLineLength = (block: InvoiceTemplateBlock) =>
+  clampNumber(Math.floor(block.width / 8), 22, 46);
+
+const breakLongToken = (token: string, maxLength: number) => {
+  if (token.length <= maxLength) return token;
+
+  const chunks: string[] = [];
+  let remaining = token;
+
+  while (remaining.length > maxLength) {
+    const window = remaining.slice(0, maxLength + 1);
+    const splitAt = Math.max(
+      window.lastIndexOf("/"),
+      window.lastIndexOf("."),
+      window.lastIndexOf("-"),
+      window.lastIndexOf("_"),
+      window.lastIndexOf("?"),
+      window.lastIndexOf("&"),
+      window.lastIndexOf("=")
+    );
+    const chunkEnd =
+      splitAt >= Math.floor(maxLength * 0.55) ? splitAt + 1 : maxLength;
+
+    chunks.push(remaining.slice(0, chunkEnd));
+    remaining = remaining.slice(chunkEnd);
+  }
+
+  if (remaining) chunks.push(remaining);
+  return chunks.join("\n");
+};
+
+const wrapLongText = (value: string, maxLength: number) =>
+  value
+    .split("\n")
+    .map((line) =>
+      line
+        .split(" ")
+        .map((token) => breakLongToken(token, maxLength))
+        .join(" ")
+    )
+    .join("\n");
+
+const countTextLines = (value: string) =>
+  value.split("\n").reduce((count, line) => {
+    if (!line.trim()) return count + 1;
+    return count + line.split("\n").length;
+  }, 0);
+
+const fittedTemplateTextStyle = (
+  block: InvoiceTemplateBlock,
+  lineCount: number,
+  reservedHeight = 18
+) => {
+  const availableHeight = block.height * scaleY - reservedHeight;
+  const fontSize = clampNumber(
+    availableHeight / Math.max(lineCount, 1) / 1.18,
+    6,
+    8.5
+  );
+
+  return {
+    fontSize,
+    lineHeight: fontSize <= 6.5 ? 1.05 : 1.12,
+    marginBottom: fontSize <= 6.5 ? 1 : 2,
+  };
+};
+
+const fittedTemplateTitleStyle = (bodyFontSize: number) => ({
+  fontSize: clampNumber(bodyFontSize + 3.5, 9, 12),
+  marginBottom: bodyFontSize <= 6.5 ? 3 : 6,
+});
+
+const normalizeTemplateBlocks = (
+  settings?: InvoicePdfSettings | null
+): InvoiceTemplateBlock[] => {
+  const layout =
+    settings?.template_layout ||
+    (settings as (InvoicePdfSettings & {
+      templateLayout?: { blocks?: InvoiceTemplateBlock[] };
+    }) | null)?.templateLayout;
+
+  if (!Array.isArray(layout?.blocks)) return [];
+
+  return layout.blocks
+    .map((block) => ({
+      ...block,
+      x: Number(block.x),
+      y: Number(block.y),
+      width: Number(block.width),
+      height: Number(block.height),
+      visible: block.visible !== false,
+    }))
+    .filter(
+      (block) =>
+        block.id &&
+        Number.isFinite(block.x) &&
+        Number.isFinite(block.y) &&
+        Number.isFinite(block.width) &&
+        Number.isFinite(block.height) &&
+        block.width > 0 &&
+        block.height > 0 &&
+        block.visible
+    );
+};
+
+const blockStyle = (block: InvoiceTemplateBlock) => ({
+  ...styles.templateBlock,
+  left: block.x * scaleX,
+  top: block.y * scaleY,
+  width: block.width * scaleX,
+  height: block.height * scaleY,
+});
+
+const clippedBlockStyle = (block: InvoiceTemplateBlock) => ({
+  ...blockStyle(block),
+  overflow: "hidden" as const,
+});
+
+export function InvoicePDF({ invoice, settings }: InvoicePDFProps) {
+  const paymentTags = settings?.payment_tags || [];
+  const directPaymentLinks = settings?.direct_payment_links || [];
+  const qrLinks = settings?.qr_links || [];
+  const hasPaymentSettings =
+    paymentTags.length > 0 ||
+    directPaymentLinks.length > 0 ||
+    !!settings?.banking_details ||
+    qrLinks.length > 0;
+  const templateBlocks = normalizeTemplateBlocks(settings);
+  const hasTemplateLayout = templateBlocks.length > 0;
+
+  const renderTemplateBlock = (block: InvoiceTemplateBlock) => {
+    if (block.type === "company") {
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          <View style={styles.templateCompany}>
+            {settings?.company_logo_view_url || settings?.company_logo_url ? (
+              <View style={styles.templateLogoWrap}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image
+                  src={settings.company_logo_view_url || settings.company_logo_url}
+                  style={styles.logo}
+                />
+              </View>
+            ) : null}
+            <View>
+              <Text style={styles.templateCompanyName}>
+                {invoice.from.name || "Lucid Wave Studios"}
+              </Text>
+              {invoice.from.phone ? (
+                <Text style={styles.templateSmallText}>
+                  {invoice.from.phone}
+                </Text>
+              ) : null}
+              <Text style={styles.templateSmallText}>{invoice.from.email}</Text>
+              {addressLines(invoice.from.address).map((line) => (
+                <Text key={`template-company-${line}`} style={styles.templateSmallText}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    if (block.type === "invoice-title") {
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          <View style={styles.templateTitleBlock}>
+            <Text style={styles.templateTitle}>INVOICE</Text>
+            <View style={styles.templateTitleBar} />
+          </View>
+        </View>
+      );
+    }
+
+    if (block.type === "client") {
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          <Text style={styles.templateSectionTitle}>Invoice To</Text>
+          <Text style={styles.partyText}>{invoice.to.name}</Text>
+          <Text style={styles.partyText}>{invoice.to.email}</Text>
+          {addressLines(invoice.to.address).map((line) => (
+            <Text key={`template-client-${line}`} style={styles.partyText}>
+              {line}
+            </Text>
+          ))}
+        </View>
+      );
+    }
+
+    if (block.type === "invoice-meta") {
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          <View style={styles.metaRows}>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaKey}>Invoice</Text>
+              <Text style={styles.metaValue}>{invoice.invoiceNumber}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaKey}>Date</Text>
+              <Text style={styles.metaValue}>{formatDate(invoice.date)}</Text>
+            </View>
+            <View style={styles.metaRow}>
+              <Text style={styles.metaKey}>Due</Text>
+              <Text style={styles.metaValue}>{formatDate(invoice.dueDate)}</Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    if (block.type === "project-summary") {
+      const projectName =
+        invoice.projectName?.trim() ||
+        invoice.items[0]?.description ||
+        "Invoice Services";
+
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          <Text style={styles.templateProjectLine}>
+            Project: {projectName}
+          </Text>
+          <Text style={styles.templateProjectLine}>
+            Total Cost: {formatCurrencyForPDF(invoice.total, invoice.currency)}
+          </Text>
+        </View>
+      );
+    }
+
+    if (block.type === "line-items") {
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          <View style={styles.templateItemsHeader}>
+            <Text style={[styles.description, styles.headerText]}>
+              Description
+            </Text>
+            <Text style={[styles.qty, styles.headerText]}>Qty</Text>
+            <Text style={[styles.amount, styles.headerText]}>Amount</Text>
+          </View>
+          {invoice.items.slice(0, 4).map((item) => (
+            <View key={`template-${item.id}`} style={styles.templateItemsRow}>
+              <Text style={styles.description}>{item.description}</Text>
+              <Text style={styles.qty}>{item.quantity}</Text>
+              <Text style={styles.amount}>
+                {formatCurrencyForPDF(item.amount, invoice.currency)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (block.type === "totals") {
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          <View style={styles.templateTotals}>
+            <Text style={styles.grandTotalLabel}>Total</Text>
+            <Text style={styles.amount}>
+              {formatCurrencyForPDF(invoice.total, invoice.currency)}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (block.type === "thank-you") {
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          <Text style={styles.templateThankYou}>
+            Thank you for choosing our{"\n"}services!
+          </Text>
+        </View>
+      );
+    }
+
+    if (block.type === "payment-details") {
+      const maxLineLength = getTemplateLineLength(block);
+      const bankingDetails = settings?.banking_details
+        ? wrapLongText(settings.banking_details, maxLineLength)
+        : "";
+      const renderedLinks = directPaymentLinks.map((link) => ({
+        ...link,
+        label: wrapLongText(
+          `${link.label.replace(/:$/, "")}:`,
+          maxLineLength
+        ),
+        url: wrapLongText(link.url, maxLineLength),
+      }));
+      const bodyLineCount =
+        (bankingDetails ? countTextLines(bankingDetails) : paymentTags.length) +
+        renderedLinks.reduce(
+          (count, link) =>
+            count + countTextLines(link.label) + countTextLines(link.url) + 1,
+          0
+        );
+      const bodyStyle = fittedTemplateTextStyle(block, bodyLineCount || 1);
+      const titleStyle = fittedTemplateTitleStyle(bodyStyle.fontSize);
+
+      return (
+        <View key={block.id} style={clippedBlockStyle(block)}>
+          {bankingDetails ? (
+            <>
+              <Text style={[styles.templateSectionTitle, titleStyle]}>
+                Bank Details
+              </Text>
+              <Text style={[styles.templatePaymentText, bodyStyle]}>
+                {bankingDetails}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={[styles.templateSectionTitle, titleStyle]}>
+                Payment Methods
+              </Text>
+              {paymentTags.map((tag) => (
+                <Text
+                  key={`template-tag-${tag}`}
+                  style={[styles.templatePaymentText, bodyStyle]}
+                >
+                  {tag.toUpperCase()}
+                </Text>
+              ))}
+            </>
+          )}
+          {renderedLinks.map((link) => (
+            <View
+              key={`template-link-${link.label}-${link.url}`}
+              style={styles.templatePaymentLink}
+            >
+              <Text
+                style={[
+                  styles.templatePaymentText,
+                  styles.paymentStrong,
+                  bodyStyle,
+                ]}
+              >
+                {link.label}
+              </Text>
+              <Text
+                style={[
+                  styles.templatePaymentText,
+                  styles.templatePaymentUrl,
+                  bodyStyle,
+                ]}
+              >
+                {link.url}
+              </Text>
+            </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (block.type === "notes") {
+      const noteText = wrapLongText(
+        invoice.notes || "Payment is due by the date listed above.",
+        getTemplateLineLength(block)
+      );
+      const bodyStyle = fittedTemplateTextStyle(
+        block,
+        countTextLines(noteText) || 1
+      );
+      const titleStyle = fittedTemplateTitleStyle(bodyStyle.fontSize);
+
+      return (
+        <View key={block.id} style={clippedBlockStyle(block)}>
+          <Text style={[styles.templateSectionTitle, titleStyle]}>Notes</Text>
+          <Text style={[styles.templatePaymentText, bodyStyle]}>
+            {noteText}
+          </Text>
+        </View>
+      );
+    }
+
+    if (block.type === "qr-links") {
+      const firstImageQr = qrLinks.find((link) => isImageUrl(link.url));
+      return (
+        <View key={block.id} style={blockStyle(block)}>
+          {firstImageQr ? (
+            // eslint-disable-next-line jsx-a11y/alt-text
+            <Image src={firstImageQr.url} style={styles.templateQrImage} />
+          ) : (
+            qrLinks.map((link) => (
+              <Text key={`template-qr-${link.label}-${link.url}`} style={styles.paymentText}>
+                <Text style={styles.paymentStrong}>{link.label}: </Text>
+                {link.url}
+              </Text>
+            ))
+          )}
+        </View>
+      );
+    }
+
+    return null;
   };
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Background Watermark */}
-        <View style={styles.backgroundContainer}>
-          <Image src="/pdf-bg.png" style={styles.backgroundImage} />
-        </View>
+        {hasTemplateLayout ? (
+          <>
+            {templateBlocks.map(renderTemplateBlock)}
+            <View style={styles.footer} fixed>
+              <Text>Thank you for your business.</Text>
+              <Text>Generated {format(new Date(), "MMM dd, yyyy HH:mm")}</Text>
+            </View>
+          </>
+        ) : (
+          <>
+        <View style={styles.topBand} fixed />
+        <View style={styles.accent} fixed />
 
-        {/* Header */}
         <View style={styles.header}>
-          <View style={styles.topRow}>
-            <View style={styles.clientInfo}>
-              <Text style={styles.infoTitle}>CLIENT INFORMATION</Text>
+          <View style={styles.brand}>
+            {settings?.company_logo_view_url || settings?.company_logo_url ? (
+              <View style={styles.logoWrap}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image
+                  src={settings.company_logo_view_url || settings.company_logo_url}
+                  style={styles.logo}
+                />
+              </View>
+            ) : null}
+            <View style={styles.brandText}>
+              <Text style={styles.brandKicker}>Lucid Wave Studios</Text>
+              {invoice.from.phone ? (
+                <Text style={styles.companyLine}>{invoice.from.phone}</Text>
+              ) : null}
+              <Text style={styles.companyLine}>{invoice.from.email}</Text>
+              {addressLines(invoice.from.address).map((line) => (
+                <Text key={`company-${line}`} style={styles.companyLine}>
+                  {line}
+                </Text>
+              ))}
             </View>
-            <View style={styles.invoiceTitle}>
+          </View>
+
+          <View>
+            <View style={styles.invoiceTitleBlock}>
               <Text style={styles.title}>INVOICE</Text>
-              <Text style={styles.invoiceNumber}>#{invoice.invoiceNumber}</Text>
             </View>
-          </View>
-          <View style={styles.bottomRow}>
-            <View style={styles.clientDetails}>
-              <Text style={styles.clientName}>{invoice.to.name}</Text>
-              <Text style={styles.clientEmail}>{invoice.to.email}</Text>
-            </View>
-            <View style={styles.dateInfo}>
-              <Text style={styles.dateLabel}>Date: {formatDate(invoice.date)}</Text>
-              <Text style={styles.dueDateLabel}>Due Date: {formatDate(invoice.dueDate)}</Text>
+            <View style={styles.invoiceMeta}>
+              <View style={styles.metaRows}>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaKey}>Invoice</Text>
+                  <Text style={styles.metaValue}>{invoice.invoiceNumber}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaKey}>Date</Text>
+                  <Text style={styles.metaValue}>
+                    {formatDate(invoice.date)}
+                  </Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Text style={styles.metaKey}>Due</Text>
+                  <Text style={styles.metaValue}>
+                    {formatDate(invoice.dueDate)}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* From/To Information */}
-        <View style={styles.invoiceInfo}>
-          <View style={styles.infoBlock}>
-            <Text style={styles.infoTitle}>FROM:</Text>
-            <Text style={styles.infoText}>{invoice.from.name}</Text>
-            <Text style={styles.infoText}>
-              {invoice.from.address.split("\n").map((line, index) => (
-                <Text key={index}>
-                  {line}
-                  {"\n"}
-                </Text>
-              ))}
-            </Text>
-            <Text style={styles.infoText}>{invoice.from.email}</Text>
-            {invoice.from.phone && (
-              <Text style={styles.infoText}>{invoice.from.phone}</Text>
-            )}
+        <View style={styles.partyGrid}>
+          <View style={styles.partyBox}>
+            <Text style={styles.partyLabel}>From</Text>
+            <Text style={styles.partyName}>{invoice.from.name}</Text>
+            {addressLines(invoice.from.address).map((line) => (
+              <Text key={line} style={styles.partyText}>
+                {line}
+              </Text>
+            ))}
+            <Text style={styles.partyText}>{invoice.from.email}</Text>
+            {invoice.from.phone && invoice.from.phone !== "-" ? (
+              <Text style={styles.partyText}>{invoice.from.phone}</Text>
+            ) : null}
           </View>
 
-          <View style={styles.infoBlock}>
-            <Text style={styles.infoTitle}>TO:</Text>
-            <Text style={styles.infoText}>{invoice.to.name}</Text>
-            <Text style={styles.infoText}>
-              {invoice.to.address.split("\n").map((line, index) => (
-                <Text key={index}>
-                  {line}
-                  {"\n"}
-                </Text>
-              ))}
-            </Text>
-            <Text style={styles.infoText}>{invoice.to.email}</Text>
-            {invoice.to.phone && (
-              <Text style={styles.infoText}>{invoice.to.phone}</Text>
-            )}
+          <View style={styles.partyBox}>
+            <Text style={styles.partyLabel}>Bill To</Text>
+            <Text style={styles.partyName}>{invoice.to.name}</Text>
+            {addressLines(invoice.to.address).map((line) => (
+              <Text key={line} style={styles.partyText}>
+                {line}
+              </Text>
+            ))}
+            <Text style={styles.partyText}>{invoice.to.email}</Text>
+            {invoice.to.phone && invoice.to.phone !== "-" ? (
+              <Text style={styles.partyText}>{invoice.to.phone}</Text>
+            ) : null}
           </View>
         </View>
 
-        {/* Items Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableCell, styles.tableCellDescription]}>
+            <Text style={[styles.description, styles.headerText]}>
               Description
             </Text>
-            <Text style={[styles.tableCell, styles.tableCellQuantity]}>
-              Qty
-            </Text>
-            <Text style={[styles.tableCell, styles.tableCellRate]}>Rate</Text>
-            <Text style={[styles.tableCell, styles.tableCellAmount]}>
-              Amount
-            </Text>
+            <Text style={[styles.qty, styles.headerText]}>Qty</Text>
+            <Text style={[styles.rate, styles.headerText]}>Rate</Text>
+            <Text style={[styles.amount, styles.headerText]}>Amount</Text>
           </View>
 
           {invoice.items.map((item, index) => (
-            <View key={item.id} style={styles.tableRow}>
-              <Text style={[styles.tableCell, styles.tableCellDescription]}>
-                {item.description}
-              </Text>
-              <Text style={[styles.tableCell, styles.tableCellQuantity]}>
-                {item.quantity}
-              </Text>
-              <Text style={[styles.tableCell, styles.tableCellRate]}>
+            <View
+              key={item.id}
+              style={[styles.tableRow, index % 2 === 1 ? styles.altRow : {}]}
+            >
+              <Text style={styles.description}>{item.description}</Text>
+              <Text style={styles.qty}>{item.quantity}</Text>
+              <Text style={styles.rate}>
                 {formatCurrencyForPDF(item.rate, invoice.currency)}
               </Text>
-              <Text style={[styles.tableCell, styles.tableCellAmount]}>
+              <Text style={styles.amount}>
                 {formatCurrencyForPDF(item.amount, invoice.currency)}
               </Text>
             </View>
           ))}
         </View>
 
-        {/* Totals */}
-        <View style={styles.totals}>
-          <View style={styles.totalRow}>
-            <Text>Subtotal:</Text>
-            <Text>
-              {formatCurrencyForPDF(invoice.subtotal, invoice.currency)}
-            </Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text>Tax ({invoice.taxRate}%):</Text>
-            <Text>
-              {formatCurrencyForPDF(invoice.taxAmount, invoice.currency)}
-            </Text>
-          </View>
-          <View style={[styles.totalRow, styles.totalRowFinal]}>
-            <Text>TOTAL:</Text>
-            <Text>{formatCurrencyForPDF(invoice.total, invoice.currency)}</Text>
-          </View>
-        </View>
-
-        {/* Notes */}
-        {invoice.notes && (
+        <View style={styles.summaryRow}>
           <View style={styles.notes}>
-            <Text style={styles.notesTitle}>Notes:</Text>
-            <Text>{invoice.notes}</Text>
+            <Text style={styles.notesTitle}>Notes</Text>
+            <Text style={styles.notesText}>
+              {invoice.notes || "Payment is due by the date listed above."}
+            </Text>
           </View>
-        )}
 
-        {/* Footer */}
-        <View style={styles.footer} fixed>
-          <Text>Thank you for your business!</Text>
-          <Text>
-            Generated on {format(new Date(), "MMMM dd, yyyy 'at' HH:mm")}
-          </Text>
+          <View style={styles.totals}>
+            <View style={styles.totalLine}>
+              <Text>Subtotal</Text>
+              <Text>
+                {formatCurrencyForPDF(invoice.subtotal, invoice.currency)}
+              </Text>
+            </View>
+            <View style={styles.totalLine}>
+              <Text>Tax ({invoice.taxRate}%)</Text>
+              <Text>
+                {formatCurrencyForPDF(invoice.taxAmount, invoice.currency)}
+              </Text>
+            </View>
+            <View style={styles.grandTotal}>
+              <Text style={styles.grandTotalLabel}>Total</Text>
+              <Text style={styles.grandTotalValue}>
+                {formatCurrencyForPDF(invoice.total, invoice.currency)}
+              </Text>
+            </View>
+          </View>
         </View>
+
+        {hasPaymentSettings ? (
+          <View style={styles.paymentSection}>
+            <View style={styles.paymentGrid}>
+              <View style={styles.paymentColumn}>
+                {settings?.banking_details ? (
+                  <>
+                    <Text style={styles.paymentTitle}>
+                      BANK DETAILS
+                    </Text>
+                    <Text style={styles.paymentText}>
+                      {wrapLongText(settings.banking_details, 44)}
+                    </Text>
+                  </>
+                ) : paymentTags.length > 0 ? (
+                  <>
+                    <Text style={styles.paymentTitle}>Payment Methods</Text>
+                    {paymentTags.map((tag) => (
+                      <Text key={tag} style={styles.paymentText}>
+                        {tag.toUpperCase()}
+                      </Text>
+                    ))}
+                  </>
+                ) : null}
+              </View>
+
+              <View style={styles.paymentColumn}>
+                {directPaymentLinks.length > 0 ? (
+                  <>
+                    <Text style={styles.paymentTitle}>Direct Payment</Text>
+                    {directPaymentLinks.map((link) => (
+                      <Text
+                        key={`${link.label}-${link.url}`}
+                        style={styles.paymentText}
+                      >
+                        <Text style={styles.paymentStrong}>{link.label}: </Text>
+                        {wrapLongText(link.url, 42)}
+                      </Text>
+                    ))}
+                  </>
+                ) : null}
+                {qrLinks.length > 0 ? (
+                  <>
+                    <Text style={styles.paymentTitle}>QR Payment</Text>
+                    {qrLinks.map((link) => (
+                      <View key={`${link.label}-${link.url}`}>
+                        <Text style={styles.paymentText}>
+                          <Text style={styles.paymentStrong}>{link.label}: </Text>
+                          {isImageUrl(link.url) ? "" : wrapLongText(link.url, 42)}
+                        </Text>
+                        {isImageUrl(link.url) ? (
+                          // eslint-disable-next-line jsx-a11y/alt-text
+                          <Image src={link.url} style={styles.qrImage} />
+                        ) : null}
+                      </View>
+                    ))}
+                  </>
+                ) : null}
+              </View>
+            </View>
+            <View style={styles.paymentRule} />
+          </View>
+        ) : null}
+
+        <View style={styles.footer} fixed>
+          <Text>Thank you for your business.</Text>
+          <Text>Generated {format(new Date(), "MMM dd, yyyy HH:mm")}</Text>
+        </View>
+          </>
+        )}
       </Page>
     </Document>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import SidebarLayout from "./sidebar-layout";
 
@@ -21,7 +21,7 @@ export default function HomeLayout({ children }: HomeLayoutProps) {
       setAuthChecked(true);
     };
     checkAuthentication();
-  }, []);
+  }, [checkAuth]);
 
   useEffect(() => {
     if (authChecked && !isAuthenticated && typeof window !== "undefined") {
@@ -48,6 +48,9 @@ export default function HomeLayout({ children }: HomeLayoutProps) {
     if (path === "/portfolio") return "Portfolio";
     if (path === "/users") return "Users";
     if (path === "/users/invitations") return "User Invitations";
+    if (path === "/settings") return "Settings";
+    if (path === "/settings/invoice") return "Invoice Settings";
+    if (path === "/settings/invoice/template") return "Invoice Template";
     return "Dashboard";
   };
 

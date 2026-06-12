@@ -25,6 +25,7 @@ const segmentLabels: Record<string, string> = {
   portfolio: "Portfolio",
   users: "Users",
   invitations: "User Invitations",
+  settings: "Settings",
 };
 
 export default function SidebarLayout({

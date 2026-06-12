@@ -9,6 +9,8 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  first_name?: string;
+  last_name?: string;
   role: "user" | "admin";
   created_at: string;
   updated_at: string;
@@ -34,6 +36,15 @@ export interface UpdateUserRequest {
 
 const API_URL = `${API_BASE_URL}/api/users`;
 
+function normalizeUser(user: User): User {
+  return {
+    ...user,
+    id: String(user.id),
+    firstName: user.firstName ?? user.first_name ?? "",
+    lastName: user.lastName ?? user.last_name ?? "",
+  };
+}
+
 export async function getUsers(): Promise<UsersResponse> {
   try {
     const response: AxiosResponse<UsersResponse> = await axios.get(API_URL, {
@@ -44,7 +55,7 @@ export async function getUsers(): Promise<UsersResponse> {
       },
     });
 
-    return response.data;
+    return response.data.map(normalizeUser);
   } catch (error) {
     console.error("Error fetching users:", error);
     throw error;
@@ -61,7 +72,7 @@ export async function getUserById(id: string): Promise<User> {
       },
     });
 
-    return response.data;
+    return normalizeUser(response.data);
   } catch (error) {
     console.error("Error fetching user:", error);
     throw error;
@@ -78,7 +89,7 @@ export async function createUser(userData: CreateUserRequest): Promise<User> {
       },
     });
 
-    return response.data;
+    return normalizeUser(response.data);
   } catch (error) {
     console.error("Error creating user:", error);
     throw error;
@@ -102,7 +113,7 @@ export async function updateUser(
       }
     );
 
-    return response.data;
+    return normalizeUser(response.data);
   } catch (error) {
     console.error("Error updating user:", error);
     throw error;

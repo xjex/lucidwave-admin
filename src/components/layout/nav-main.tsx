@@ -13,6 +13,7 @@ import {
   Folder,
   UserCog,
   IdCard,
+  Settings,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -80,6 +81,15 @@ const navItems: NavItem[] = [
     items: [
       { title: "Users", url: "/users" },
       { title: "Invitations", url: "/users/invitations" },
+    ],
+  },
+  {
+    title: "Settings",
+    url: "/settings/invoice",
+    icon: Settings,
+    items: [
+      { title: "Invoice", url: "/settings/invoice" },
+      { title: "Invoice Template", url: "/settings/invoice/template" },
     ],
   },
 ];
