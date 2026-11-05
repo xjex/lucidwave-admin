@@ -98,11 +98,13 @@ export default function InvoicePage() {
   const {
     files: invoiceFiles,
     email: invoiceEmail,
+    note: invoiceNote,
     isLoading: invoiceLoading,
     message: invoiceMessage,
     addFiles: addInvoiceFiles,
     removeFile: removeInvoiceFile,
     setEmail: setInvoiceEmail,
+    setNote: setInvoiceNote,
     sendInvoices,
     clearMessage: clearInvoiceMessage,
     resetForm: resetInvoiceForm,
@@ -218,14 +220,23 @@ export default function InvoicePage() {
     setShowPreview(true);
   };
 
-  const handleSendCreatedInvoice = async (invoice: Invoice, pdfBlob: Blob) => {
+  const handleSendCreatedInvoice = async (
+    invoice: Invoice,
+    pdfBlob: Blob,
+    note: string,
+    attachments: File[]
+  ) => {
     try {
       const pdfFile = new File(
         [pdfBlob],
         `invoice-${invoice.invoiceNumber}.pdf`,
         { type: "application/pdf" }
       );
-      const result = await sendInvoicesService([pdfFile], invoice.to.email);
+      const result = await sendInvoicesService(
+        [pdfFile, ...attachments],
+        invoice.to.email,
+        note
+      );
 
       if (!result.success) {
         toast.error(result.message);
@@ -588,6 +599,7 @@ export default function InvoicePage() {
         contact={selectedContact}
         files={invoiceFiles}
         email={invoiceEmail}
+        note={invoiceNote}
         isLoading={invoiceLoading}
         message={invoiceMessage}
         onFileChange={(e) => {
@@ -596,6 +608,7 @@ export default function InvoicePage() {
           e.target.value = "";
         }}
         onEmailChange={setInvoiceEmail}
+        onNoteChange={setInvoiceNote}
         onRemoveFile={removeInvoiceFile}
         onClearMessage={clearInvoiceMessage}
       />

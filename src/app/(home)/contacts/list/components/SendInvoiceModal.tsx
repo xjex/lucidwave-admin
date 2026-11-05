@@ -5,6 +5,7 @@ import { FileText, Trash2, Eye, ArrowLeft, ChevronLeft, ChevronRight, CircleX } 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -21,10 +22,12 @@ interface SendInvoiceModalProps {
   contact: ContactListItem | null;
   files: File[];
   email: string;
+  note: string;
   isLoading: boolean;
   message: string;
   onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onEmailChange: (email: string) => void;
+  onNoteChange: (note: string) => void;
   onRemoveFile: (index: number) => void;
   onClearMessage: () => void;
 }
@@ -36,10 +39,12 @@ export function SendInvoiceModal({
   contact,
   files,
   email,
+  note,
   isLoading,
   message,
   onFileChange,
   onEmailChange,
+  onNoteChange,
   onRemoveFile,
   onClearMessage,
 }: SendInvoiceModalProps) {
@@ -192,6 +197,21 @@ export function SendInvoiceModal({
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="invoice-note" className="font-mono text-[11px] uppercase tracking-wide text-[#574d43]">
+                Message (optional)
+              </Label>
+              <Textarea
+                id="invoice-note"
+                value={note}
+                onChange={(e) => onNoteChange(e.target.value)}
+                maxLength={2000}
+                rows={4}
+                placeholder="Add a note to include in the email"
+                className="rounded-none border-[#241d18]/20 bg-white text-[#241d18] shadow-none placeholder:text-[#9d9389] focus-visible:border-[#8b4a36] focus-visible:ring-[#8b4a36]/20"
+              />
+            </div>
+
             <div className="flex gap-2 pt-2">
               <Button
                 type="button"
@@ -236,6 +256,15 @@ export function SendInvoiceModal({
                   </ul>
                 </div>
               </div>
+
+              {note.trim() && (
+                <div className="mb-5 border-l-4 border-[#d95c3f] bg-[#f4efe4] p-4">
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-[#6f665d]">
+                    Message
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-sm text-[#241d18]">{note}</p>
+                </div>
+              )}
 
               {/* PDF Preview */}
               {pdfFiles.length > 0 && pdfUrl ? (

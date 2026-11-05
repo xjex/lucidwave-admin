@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Edit3, Send } from "lucide-react";
+import { ArrowLeft, CircleX, Download, Edit3, Send } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { InvoicePDF } from "./InvoicePDF";
 import { Invoice, InvoiceFormData, InvoicePdfSettings } from "@/types/invoice";
 import {
@@ -11,10 +12,18 @@ import {
 } from "@/services/pdfService";
 import { getCurrencySymbol } from "@/lib/currency-utils";
 
+// Backend accepts 5 files per send; one slot is the generated invoice PDF.
+const MAX_ATTACHMENTS = 4;
+
 interface InvoicePreviewProps {
   invoiceData: InvoiceFormData;
   onEdit: () => void;
-  onSend?: (invoice: Invoice, pdfBlob: Blob) => void;
+  onSend?: (
+    invoice: Invoice,
+    pdfBlob: Blob,
+    note: string,
+    attachments: File[]
+  ) => void | Promise<void>;
   onBack?: () => void;
   settings?: InvoicePdfSettings | null;
 }
@@ -29,6 +38,8 @@ export function InvoicePreview({
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   const invoice = useMemo(
     () => convertFormDataToInvoice(invoiceData),
@@ -84,7 +95,7 @@ export function InvoicePreview({
     try {
       const response = await fetch(pdfUrl);
       const blob = await response.blob();
-      await onSend(invoice, blob);
+      await onSend(invoice, blob, note, attachments);
     } catch (error) {
       console.error("Error sending invoice:", error);
       alert("Failed to send invoice. Please try again.");
@@ -186,6 +197,63 @@ export function InvoicePreview({
           </div>
         </div>
       </div>
+
+      {onSend && (
+        <div className="grid gap-4 border border-[#241d18]/15 bg-[#fffaf1] p-5 shadow-[8px_8px_0_#241d18] md:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="invoice-note" className="font-mono text-[11px] uppercase tracking-wide text-[#574d43]">
+              Message (optional)
+            </label>
+            <Textarea
+              id="invoice-note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={2000}
+              rows={4}
+              placeholder="Add a note to include in the email"
+              className="rounded-none border-[#241d18]/20 bg-white text-[#241d18] shadow-none placeholder:text-[#9d9389] focus-visible:border-[#8b4a36] focus-visible:ring-[#8b4a36]/20"
+            />
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="invoice-attachments" className="font-mono text-[11px] uppercase tracking-wide text-[#574d43]">
+              Additional Attachments ({attachments.length}/{MAX_ATTACHMENTS})
+            </label>
+            <input
+              id="invoice-attachments"
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              disabled={attachments.length >= MAX_ATTACHMENTS}
+              onChange={(e) => {
+                const picked = Array.from(e.target.files || []);
+                e.target.value = "";
+                setAttachments((prev) => {
+                  const names = new Set(prev.map((f) => f.name));
+                  return [...prev, ...picked.filter((f) => !names.has(f.name))].slice(0, MAX_ATTACHMENTS);
+                });
+              }}
+              className="block h-11 w-full border border-[#241d18]/20 bg-white px-3 py-2 text-sm text-[#241d18] file:mr-3 file:border-0 file:bg-transparent file:text-[#574d43] disabled:opacity-50"
+            />
+            {attachments.length > 0 && (
+              <ul className="space-y-1">
+                {attachments.map((file, index) => (
+                  <li key={file.name} className="flex items-center justify-between bg-[#f4efe4] px-3 py-2 text-sm">
+                    <span className="truncate text-[#241d18]">{file.name}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${file.name}`}
+                      onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== index))}
+                      className="text-[#574d43] transition-colors hover:text-[#b73823]"
+                    >
+                      <CircleX className="size-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="border border-[#241d18]/15 bg-[#fffaf1] p-4 shadow-[8px_8px_0_#241d18]">
         {pdfUrl ? (

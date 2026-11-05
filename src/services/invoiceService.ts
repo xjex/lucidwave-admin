@@ -7,7 +7,8 @@ const API_URL = `${API_BASE_URL}/api/invoices/send`;
 
 export async function sendInvoices(
   files: File[],
-  receiverEmail: string
+  receiverEmail: string,
+  note?: string
 ): Promise<{ success: boolean; message: string }> {
   try {
     const formData = new FormData();
@@ -17,6 +18,7 @@ export async function sendInvoices(
     });
 
     formData.append("receiverEmail", receiverEmail);
+    if (note?.trim()) formData.append("message", note.trim());
 
     const response: AxiosResponse = await axios.post(API_URL, formData, {
       headers: {

@@ -43,11 +43,13 @@ export default function ContactListPage() {
   const {
     files: invoiceFiles,
     email: invoiceEmail,
+    note: invoiceNote,
     isLoading: invoiceLoading,
     message: invoiceMessage,
     addFiles: addInvoiceFiles,
     removeFile: removeInvoiceFile,
     setEmail: setInvoiceEmail,
+    setNote: setInvoiceNote,
     sendInvoices,
     clearMessage: clearInvoiceMessage,
     resetForm: resetInvoiceForm,
@@ -345,6 +347,7 @@ export default function ContactListPage() {
         contact={actionContact}
         files={invoiceFiles}
         email={invoiceEmail}
+        note={invoiceNote}
         isLoading={invoiceLoading}
         message={invoiceMessage}
         onFileChange={(e) => {
@@ -353,6 +356,7 @@ export default function ContactListPage() {
           e.target.value = "";
         }}
         onEmailChange={setInvoiceEmail}
+        onNoteChange={setInvoiceNote}
         onRemoveFile={removeInvoiceFile}
         onClearMessage={clearInvoiceMessage}
       />

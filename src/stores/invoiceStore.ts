@@ -4,11 +4,13 @@ import { sendInvoices } from "@/services/invoiceService";
 interface InvoiceState {
   files: File[];
   email: string;
+  note: string;
   isLoading: boolean;
   message: string;
   addFiles: (files: File[]) => void;
   removeFile: (index: number) => void;
   setEmail: (email: string) => void;
+  setNote: (note: string) => void;
   sendInvoices: () => Promise<void>;
   clearMessage: () => void;
   resetForm: () => void;
@@ -17,6 +19,7 @@ interface InvoiceState {
 export const useInvoiceStore = create<InvoiceState>((set, get) => ({
   files: [],
   email: "",
+  note: "",
   isLoading: false,
   message: "",
 
@@ -42,16 +45,20 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     set({ email });
   },
 
+  setNote: (note: string) => {
+    set({ note });
+  },
+
   clearMessage: () => {
     set({ message: "" });
   },
 
   resetForm: () => {
-    set({ files: [], email: "" });
+    set({ files: [], email: "", note: "" });
   },
 
   sendInvoices: async () => {
-    const { files, email } = get();
+    const { files, email, note } = get();
 
     if (files.length === 0 || !email) {
       set({
@@ -64,13 +71,14 @@ export const useInvoiceStore = create<InvoiceState>((set, get) => ({
     set({ isLoading: true, message: "" });
 
     try {
-      const result = await sendInvoices(files, email);
+      const result = await sendInvoices(files, email, note);
 
       if (result.success) {
         set({
           message: result.message,
           files: [],
           email: "",
+          note: "",
           isLoading: false,
         });
       } else {
